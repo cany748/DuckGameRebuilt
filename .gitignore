@@ -380,3 +380,7 @@ DGR-Mod/DGR-Mod.dll
 # Switch port build outputs
 Switch/**/bin/
 Switch/**/obj/
+
+# Switch native build outputs
+Switch/native/build/
+Switch/out/
