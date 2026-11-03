@@ -21,7 +21,20 @@ namespace DuckGame
         private static bool _isFileDialogOpen = false;
         private static string _hatFileFilterExtension = "png";
         private static string _hatFileFilterDescription = "PNG files (*.png)";
-        private static FileSystemWatcher s_fileWatcher = new();
+        // Null where the platform has no file system notifications (e.g. Nintendo Switch).
+        private static FileSystemWatcher s_fileWatcher = CreateFileWatcher();
+
+        private static FileSystemWatcher CreateFileWatcher()
+        {
+            try
+            {
+                return new FileSystemWatcher();
+            }
+            catch (PlatformNotSupportedException)
+            {
+                return null;
+            }
+        }
         private static SDL3.SDL.SDL_DialogFileFilter[] _hatFileFilter 
             => FileDialogFna.GetDialogFileFilters(_hatFileFilterDescription, _hatFileFilterExtension);
 
@@ -33,6 +46,8 @@ namespace DuckGame
             set
             {
                 s_filePath = value;
+                if (s_fileWatcher == null)
+                    return;
                 s_fileWatcher.Path = Path.GetDirectoryName(value);
                 s_fileWatcher.Filter = Path.GetFileName(value);
                 
@@ -59,8 +74,11 @@ namespace DuckGame
                 })
                 .ToDictionary(x => x.Index, x => x);
 
-            s_fileWatcher.Changed += OnFileChanged;
-            s_fileWatcher.Renamed += OnFileChanged;
+            if (s_fileWatcher != null)
+            {
+                s_fileWatcher.Changed += OnFileChanged;
+                s_fileWatcher.Renamed += OnFileChanged;
+            }
 
             MonoMain.OnGameExit += crashed =>
             {
