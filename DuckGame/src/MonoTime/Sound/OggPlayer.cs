@@ -35,6 +35,13 @@ namespace DuckGame
 
         private Microsoft.Xna.Framework.Media.Song _song; // 64-bit only
 
+        // FNA's MediaPlayer opens a second audio device, which SDL2 on Switch refuses.
+#if SWITCH
+        private static bool UseMediaPlayer => false;
+#else
+        private static bool UseMediaPlayer => Environment.Is64BitProcess;
+#endif
+
         private float _pitch;
         private float _pan;
 
@@ -42,7 +49,7 @@ namespace DuckGame
         {
             get
             {
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                     return MediaPlayer.State == MediaState.Playing ? SoundState.Playing
                         : MediaPlayer.State == MediaState.Paused ? SoundState.Paused
                         : SoundState.Stopped;
@@ -62,7 +69,7 @@ namespace DuckGame
             set
             {
                 _volume = value;
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                 {
                     MediaPlayer.Volume = MathHelper.Clamp(_volume, 0f, 1f) * _replaygainModifier;
                     return;
@@ -102,7 +109,7 @@ namespace DuckGame
             {
                 bool changed = _pitch != value;
                 _pitch = value;
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                     return; // MediaPlayer has no pitch support
                 if (_instance == null)
                     return;
@@ -121,7 +128,7 @@ namespace DuckGame
             {
                 bool changed = _pan != value;
                 _pan = value;
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                     return; // MediaPlayer has no pan support
                 if (_instance == null)
                     return;
@@ -139,7 +146,7 @@ namespace DuckGame
             set
             {
                 _shouldLoop = value;
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                     MediaPlayer.IsRepeating = value;
             }
         }
@@ -148,7 +155,7 @@ namespace DuckGame
         {
             get
             {
-                if (Environment.Is64BitProcess)
+                if (UseMediaPlayer)
                     return MediaPlayer.PlayPosition;
                 return _activeSong != null && _valid && _totalSamplesToDecode > 0 && _decodedSamplePosition < _totalSamplesToDecode
                     ? new TimeSpan(0, 0, 0, 0, (int)(_decodedSamplePosition / _totalSamplesToDecode / 44100.0) * 500)
@@ -158,7 +165,7 @@ namespace DuckGame
 
         public void Terminate()
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 MediaPlayer.Stop();
                 if (_song != null)
@@ -182,7 +189,7 @@ namespace DuckGame
         {
             if (_initialized)
                 return;
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 _initialized = true;
                 return;
@@ -268,7 +275,7 @@ namespace DuckGame
 
         public void SetOgg(MemoryStream ogg, string path = null)
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 try
                 {
@@ -359,7 +366,7 @@ namespace DuckGame
 
         public void Play()
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 if (_song == null)
                     return;
@@ -382,7 +389,7 @@ namespace DuckGame
 
         public void Pause()
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 MediaPlayer.Pause();
                 return;
@@ -399,7 +406,7 @@ namespace DuckGame
 
         public void Resume()
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 MediaPlayer.Resume();
                 MediaPlayer.Volume = MathHelper.Clamp(_volume, 0f, 1f) * _replaygainModifier;
@@ -420,7 +427,7 @@ namespace DuckGame
 
         public void Stop()
         {
-            if (Environment.Is64BitProcess)
+            if (UseMediaPlayer)
             {
                 MediaPlayer.Stop();
                 _iSaidStop = true;
