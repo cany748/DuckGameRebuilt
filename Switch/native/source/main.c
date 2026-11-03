@@ -1,13 +1,18 @@
 #include "core.h"
+#include <pthread.h>
+#include <sys/stat.h>
 
-int main(int argc, char *argv[])
+#define SAVE_ROOT "/switch/DuckGame/home"
+
+// The homebrew main thread has a small stack, while MojoShader keeps a ~330KB context on the
+// stack and the interpreter nests deeply, so the runtime gets a thread of its own.
+#define RUNTIME_STACK_SIZE (32 * 1024 * 1024)
+
+static int exit_code = 0;
+
+static void *run_game(void *arg)
 {
-    // DGR picks the SDL backend from this variable; only SDL2 exists for libnx.
-    setenv("FNA_PLATFORM_BACKEND", "SDL2", 1);
-    setenv("FNA3D_FORCE_DRIVER", "OpenGL", 1);
-
-    if (!application_initialize(CONFIG_INI_PATH))
-        return 1;
+    (void)arg;
 
     mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
 
@@ -17,14 +22,16 @@ int main(int argc, char *argv[])
     if (!domain)
     {
         fatal_error("Failed to initialize mono domain");
-        return 1;
+        exit_code = 1;
+        return NULL;
     }
 
     char *launch_dll = io_strdup(g_config.default_assembly);
     if (!launch_dll)
     {
         fatal_error("default_assembly is not set in config.ini");
-        return 1;
+        exit_code = 1;
+        return NULL;
     }
 
     io_debugf("Loading assembly %s", launch_dll);
@@ -34,14 +41,51 @@ int main(int argc, char *argv[])
     if (!assembly)
     {
         fatal_error("Failed to load DuckGame assembly");
-        return 1;
+        exit_code = 1;
+        return NULL;
     }
 
-    char *monoargs[] = {launch_dll, "-nothreading"};
-    mono_jit_exec(domain, assembly, 2, monoargs);
+    // -linux selects DGR's non-Windows code paths (no Win32 module hooks, single-threaded loading);
+    // the rest switch off desktop services that don't exist on the console.
+    char *monoargs[] = {launch_dll, "-linux", "-nothreading", "-nosteam", "-nomods", "-noRPC", "-norebuiltupdates", "-nocloud"};
+    exit_code = mono_jit_exec(domain, assembly, sizeof(monoargs) / sizeof(monoargs[0]), monoargs);
 
     mono_jit_cleanup(domain);
     free(launch_dll);
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    // DGR picks the SDL backend from this variable; only SDL2 exists for libnx.
+    setenv("FNA_PLATFORM_BACKEND", "SDL2", 1);
+    setenv("FNA3D_FORCE_DRIVER", "OpenGL", 1);
+    // SDL2 for libnx defaults to a GLES context; mesa also offers desktop GL, which is the path FNA3D is tested on.
+    setenv("FNA3D_OPENGL_FORCE_COMPATIBILITY_PROFILE", "1", 1);
+    setenv("FNA3D_MOJOSHADER_PROFILE", "glsl120", 1);
+
+    // Horizon has no passwd database; .NET resolves special folders from these variables.
+    mkdir(SAVE_ROOT, 0777);
+    setenv("HOME", SAVE_ROOT, 1);
+    setenv("XDG_DATA_HOME", SAVE_ROOT "/.local/share", 1);
+    setenv("XDG_CONFIG_HOME", SAVE_ROOT "/.config", 1);
+
+    if (!application_initialize(CONFIG_INI_PATH))
+        return 1;
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, RUNTIME_STACK_SIZE);
+
+    pthread_t thread;
+    if (pthread_create(&thread, &attr, run_game, NULL) != 0)
+    {
+        fatal_error("Failed to create the runtime thread");
+        return 1;
+    }
+    pthread_attr_destroy(&attr);
+    pthread_join(thread, NULL);
+
     application_terminate();
-    return 0;
+    return exit_code;
 }

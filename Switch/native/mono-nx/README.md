@@ -1,2 +1,2 @@
 Vendored from https://github.com/exelix11/mono-nx (native/shared) at commit 285b277de16711344126cd90c2a21cfbd0d5d714, MIT license (see LICENSE).
-Local changes: dl_shim.c registers the libraries used by FNA instead of the mono-nx demo libraries.
+Local changes: dl_shim.c registers the libraries used by FNA instead of the mono-nx demo libraries; dl_shim_dotnet.c rejects AF_UNIX sockets; core.h lets CONFIG_INI_PATH be overridden.

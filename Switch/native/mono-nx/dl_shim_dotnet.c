@@ -7,6 +7,12 @@ int32_t SystemNative_Socket_Hook(int32_t addressFamily, int32_t socketType, int3
     extern void socket_esnure_init_thread_safe();
     extern int32_t SystemNative_Socket(int32_t addressFamily, int32_t socketType, int32_t protocolType, intptr_t* createdSocket);
 
+    // Horizon has no Unix domain sockets (and Ryujinx aborts on them), fail like a POSIX system would.
+    const int32_t PAL_AddressFamily_AF_UNIX = 1;
+    const int32_t PAL_Error_EAFNOSUPPORT = 0x10005;
+    if (addressFamily == PAL_AddressFamily_AF_UNIX)
+        return PAL_Error_EAFNOSUPPORT;
+
     socket_esnure_init_thread_safe();
     return SystemNative_Socket(addressFamily, socketType, protocolType, createdSocket);
 }
