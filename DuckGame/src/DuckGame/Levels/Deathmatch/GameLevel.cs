@@ -2,8 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-using System.Web.UI.WebControls;
-using System.Web.Profile;
 
 namespace DuckGame
 {

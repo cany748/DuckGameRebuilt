@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>DuckGame</AssemblyName>
+    <RootNamespace>DuckGame</RootNamespace>
+    <StartupObject>DGWindows.WindowsPlatformStartup</StartupObject>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <DefineConstants>$(DefineConstants);TRACE;DuckGame;SWITCH</DefineConstants>
+    <NoWarn>$(NoWarn);CS0108;CS0114;CS0162;CS0168;CS0169;CS0219;CS0414;CS0472;CS0618;CS0649;CS0659;CS0660;CS0661;CS0672;CS1717;CS8981;SYSLIB0011;SYSLIB0014;SYSLIB0050;SYSLIB0051;CA1416;CA2022</NoWarn>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DGRoot>$(MSBuildThisFileDirectory)../../DuckGame/</DGRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(DGRoot)**/*.cs" Exclude="$(DGRoot)obj/**;$(DGRoot)bin/**" />
+    <Compile Remove="$(DGRoot)AddedContent/Lucky/Commands/DGRStuff.cs" />
+    <Compile Remove="$(DGRoot)src/DiscordRichPresence.cs" />
+    <Compile Remove="$(DGRoot)src/XnaToFna/ConnectionIndicator.cs" />
+    <Compile Include="Compat/**/*.cs" />
+    <EmbeddedResource Include="$(DGRoot)version.txt" LogicalName="DuckGame.version.txt" Condition="Exists('$(DGRoot)version.txt')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../FNA/FNA.Core.csproj" />
+    <ProjectReference Include="../DGSteam/DGSteam.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(DGRoot)../Steam/Steamworks.NET.dll" />
+    <Reference Include="$(DGRoot)lib/NAudio.dll" />
+    <Reference Include="$(DGRoot)lib/NVorbis.dll" />
+    <Reference Include="$(DGRoot)lib/NVorbis.NAudioSupport.dll" />
+    <Reference Include="$(DGRoot)lib/DGInput.dll" />
+    <Reference Include="$(DGRoot)../deps/0Harmony.dll" />
+    <Reference Include="$(DGRoot)lib/MonoMod.exe" />
+    <Reference Include="$(DGRoot)lib/Mono.Cecil.dll" />
+    <Reference Include="$(DGRoot)lib/MoonSharp.Interpreter.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="SixLabors.Fonts" Version="1.0.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.9.0" />
+    <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.10" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.10" />
+    <PackageReference Include="System.CodeDom" Version="9.0.10" />
+    <PackageReference Include="System.Security.Permissions" Version="9.0.10" />
+    <PackageReference Include="System.Speech" Version="9.0.10" />
+  </ItemGroup>
+</Project>

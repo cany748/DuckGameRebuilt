@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Web.Configuration;
 
 namespace DuckGame
 {

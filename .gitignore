@@ -376,3 +376,7 @@ version.txt
 /DuckGame/SlnPath.txt
 .idea
 DGR-Mod/DGR-Mod.dll
+
+# Switch port build outputs
+Switch/**/bin/
+Switch/**/obj/
