@@ -1,8 +1,10 @@
 #include "core.h"
+#include <mono/jit/mono-private-unstable.h>
 #include <pthread.h>
 #include <sys/stat.h>
 
 #define SAVE_ROOT "/switch/DuckGame/home"
+#define GAME_DIR "/switch/DuckGame/game"
 
 // The homebrew main thread has a small stack, while MojoShader keeps a ~330KB context on the
 // stack and the interpreter nests deeply, so the runtime gets a thread of its own.
@@ -14,8 +16,8 @@ static int exit_code = 0;
 #define AOT_MODULE(sym) do { extern void *sym; mono_aot_register_module(sym); } while (0)
 #endif
 
-// Precompiled assemblies run as native code; anything else (including code the AOT compiler
-// couldn't pregenerate, like some generic instantiations) falls back to the interpreter.
+// Precompiled assemblies run as native code; the rest (assemblies the AOT compiler can't handle,
+// code it couldn't pregenerate) falls back to the interpreter. See codeman_wrap.c.
 static void register_aot_modules(void)
 {
 #ifdef DUCKGAME_AOT
@@ -31,6 +33,18 @@ static void *run_game(void *arg)
     (void)arg;
 
     register_aot_modules();
+
+    // runtimeconfig.json isn't read by an embedding host, so feature switches go here.
+    // EventSource needs EventPipe, which mono-nx doesn't build; resource keys avoid loading
+    // resource sets just to format exception messages.
+    const char *keys[] = {
+        "System.Diagnostics.Tracing.EventSource.IsSupported",
+        "System.Resources.UseSystemResourceKeys",
+        "System.Globalization.Invariant",
+        "APP_CONTEXT_BASE_DIRECTORY",
+    };
+    const char *values[] = {"false", "true", "false", GAME_DIR "/"};
+    monovm_initialize(sizeof(keys) / sizeof(keys[0]), keys, values);
 
     application_configure_mono();
 

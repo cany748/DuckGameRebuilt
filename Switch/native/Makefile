@@ -26,7 +26,7 @@ TARGET		:=	DuckGame
 BUILD		:=	build/host
 SOURCES		:=	source mono-nx mono-nx/third_party/ini build/gen
 DATA		:=	data
-INCLUDES	:=	include mono-nx
+INCLUDES	:=	include mono-nx build/gen
 ICON		:=	icon.jpg
 
 FNA_LIBS	:=	$(TOPDIR)/build/fna
@@ -43,9 +43,16 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map) \
+			-Wl,--wrap=mono_codeman_enable_write_ex -Wl,--wrap=mono_codeman_disable_write_ex
+
+AOT_OBJS	:=	$(wildcard $(TOPDIR)/build/aot/*.o)
+ifneq ($(strip $(AOT_OBJS)),)
+	CFLAGS	+=	-DDUCKGAME_AOT=1
+endif
 
 LIBS	:= \
+			$(AOT_OBJS) \
 			$(FNA_LIBS)/FNA3D/libFNA3D.a \
 			$(FNA_LIBS)/FNA3D/libmojoshader.a \
 			$(FNA_LIBS)/FAudio/libFAudio.a \

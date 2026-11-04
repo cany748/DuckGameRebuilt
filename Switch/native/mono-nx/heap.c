@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <switch.h>
 #include <io_util.h>
 
@@ -64,4 +65,11 @@ void __libnx_initheap(void)
 
     // Note that even tho we set the pointers newlib's heap is still not ready cause libnx hasn't called the thread init function yet. We can't use malloc yet.
 	mono_nx_fakemmap_init(mono_heap_start, mono_heap_end);
+}
+// True for memory from the process heap (newlib malloc or mono's fake mmap), i.e. plain RW memory
+// rather than a JIT code alias.
+bool nx_address_in_heap(const void *address)
+{
+    intptr_t a = (intptr_t)address;
+    return a >= libnx_heap_start && a < mono_heap_end;
 }
