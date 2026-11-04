@@ -55,6 +55,12 @@ DGR's own crash log is `/switch/DuckGame/game/ducklog.txt`, saves live in `/swit
 
 - The runtime runs on a 32 MB stack thread: MojoShader keeps a ~330 KB context on the stack.
 - FNA libraries must be built with devkitA64's own compiler flags (`-mtp=soft` for TLS).
+- Threads created with libnx's "default core" would all be pinned to core 0; `source/thread_wrap.c`
+  keeps the game loop on core 0 and spreads every other thread over cores 1-2.
+- FAudio's 10 ms SDL buffers underrun on console; `patches/faudio-sdl2-buffer-size.patch` lets the host
+  request 2048-sample buffers (`FAUDIO_SDL_SAMPLES`).
+- Desktop-only options are pruned from the menus by `DuckGame.Switch/Platform/SwitchMenus.cs`;
+  Graphics gets a "Show FPS" toggle.
 - SDL2 on Switch allows a single audio device, so music is streamed through
   `DynamicSoundEffectInstance` instead of FNA's `MediaPlayer`.
 - Unix domain sockets are rejected in the P/Invoke shim (Horizon has none).
