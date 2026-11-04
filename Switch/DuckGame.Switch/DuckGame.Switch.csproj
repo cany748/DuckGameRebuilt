@@ -24,6 +24,7 @@
     <Compile Remove="$(DGRoot)src/DiscordRichPresence.cs" />
     <Compile Remove="$(DGRoot)src/XnaToFna/ConnectionIndicator.cs" />
     <Compile Include="Compat/**/*.cs" />
+    <Compile Include="Platform/**/*.cs" />
     <EmbeddedResource Include="$(DGRoot)version.txt" LogicalName="DuckGame.version.txt" Condition="Exists('$(DGRoot)version.txt')" />
   </ItemGroup>
 

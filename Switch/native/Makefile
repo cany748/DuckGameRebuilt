@@ -44,7 +44,8 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map) \
-			-Wl,--wrap=mono_codeman_enable_write_ex -Wl,--wrap=mono_codeman_disable_write_ex
+			-Wl,--wrap=mono_codeman_enable_write_ex -Wl,--wrap=mono_codeman_disable_write_ex \
+			-Wl,--wrap=threadCreate
 
 AOT_OBJS	:=	$(wildcard $(TOPDIR)/build/aot/*.o)
 ifneq ($(strip $(AOT_OBJS)),)

@@ -208,6 +208,9 @@ namespace DuckGame
             _lastCreatedTTSMenu = tempTTSMenu;
             _lastCreatedBlockMenu = tempBlockMenu;
             _lastCreatedAudioMenu = CreateAudioMenu(optionsMenu);
+#if SWITCH
+            SwitchMenus.Prune();
+#endif
 
             optionsMenu.Add(new UIText(" ", Color.White), true);
 
