@@ -146,7 +146,10 @@ static ssize_t file_log_write(struct _reent *r, void *fd, const char *ptr, size_
     if (len == 0)
         return 0;
 
-    return fwrite(ptr, 1, len, file_log_handle);
+    // Flush every write: the process is usually killed rather than exited, losing buffered output.
+    size_t written = fwrite(ptr, 1, len, file_log_handle);
+    fflush(file_log_handle);
+    return written;
 }
 
 static int redirect_newlib_io(newlib_io_write_callback callback)

@@ -10,11 +10,27 @@
 
 static int exit_code = 0;
 
+#ifdef DUCKGAME_AOT
+#define AOT_MODULE(sym) do { extern void *sym; mono_aot_register_module(sym); } while (0)
+#endif
+
+// Precompiled assemblies run as native code; anything else (including code the AOT compiler
+// couldn't pregenerate, like some generic instantiations) falls back to the interpreter.
+static void register_aot_modules(void)
+{
+#ifdef DUCKGAME_AOT
+#include "aot_modules.h"
+    mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP);
+#else
+    mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
+#endif
+}
+
 static void *run_game(void *arg)
 {
     (void)arg;
 
-    mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
+    register_aot_modules();
 
     application_configure_mono();
 
@@ -63,6 +79,8 @@ int main(int argc, char *argv[])
     // SDL2 for libnx defaults to a GLES context; mesa also offers desktop GL, which is the path FNA3D is tested on.
     setenv("FNA3D_OPENGL_FORCE_COMPATIBILITY_PROFILE", "1", 1);
     setenv("FNA3D_MOJOSHADER_PROFILE", "glsl120", 1);
+    // DGR starts SDL text input at startup, which on Switch pops up the software keyboard.
+    setenv("FNADROID", "1", 1);
 
     // Horizon has no passwd database; .NET resolves special folders from these variables.
     mkdir(SAVE_ROOT, 0777);
