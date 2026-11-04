@@ -95,8 +95,6 @@ int main(int argc, char *argv[])
     setenv("FNA3D_MOJOSHADER_PROFILE", "glsl120", 1);
     // DGR starts SDL text input at startup, which on Switch pops up the software keyboard.
     setenv("FNADROID", "1", 1);
-    // ~43ms device buffers instead of FAudio's 10ms; see patches/faudio-sdl2-buffer-size.patch.
-    setenv("FAUDIO_SDL_SAMPLES", "2048", 1);
 
     // Horizon has no passwd database; .NET resolves special folders from these variables.
     mkdir(SAVE_ROOT, 0777);

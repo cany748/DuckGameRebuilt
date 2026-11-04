@@ -57,8 +57,12 @@ DGR's own crash log is `/switch/DuckGame/game/ducklog.txt`, saves live in `/swit
 - FNA libraries must be built with devkitA64's own compiler flags (`-mtp=soft` for TLS).
 - Threads created with libnx's "default core" would all be pinned to core 0; `source/thread_wrap.c`
   keeps the game loop on core 0 and spreads every other thread over cores 1-2.
-- FAudio's 10 ms SDL buffers underrun on console; `patches/faudio-sdl2-buffer-size.patch` lets the host
-  request 2048-sample buffers (`FAUDIO_SDL_SAMPLES`).
+- Audio bypasses SDL: `source/faudio_switch.c` replaces FAudio's device layer (linker `--wrap`) and mixes
+  one audren frame (240 samples, 5 ms) at a time from its own thread on core 2, with 4 frames queued.
+  SDL2's Switch driver queued only two buffers, which either underran or added a lot of latency.
+- `DuckGame.Switch/Platform/SwitchDisplay.cs` renders at 1280x720 handheld and 1920x1080 docked and
+  follows dock changes (SDL2 always reports a 1920x1080 display mode).
+- "Show FPS" draws `SwitchStats`: FPS/UPS, update/draw/wait milliseconds, resolution and GC heap size.
 - Desktop-only options are pruned from the menus by `DuckGame.Switch/Platform/SwitchMenus.cs`;
   Graphics gets a "Show FPS" toggle.
 - SDL2 on Switch allows a single audio device, so music is streamed through

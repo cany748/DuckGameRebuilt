@@ -39,13 +39,16 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 			-I$(MONO_NX_ROOT)/artifacts/bin/mono/$(MONO_CFG)/include/mono-2.0 \
 			-I$(ICU_NX_INSTALL_DIR)/include \
 			-DU_DISABLE_RENAMING=1 \
-			-DCONFIG_INI_PATH=\"/switch/DuckGame/config.ini\"
+			-DCONFIG_INI_PATH=\"/switch/DuckGame/config.ini\" \
+			-I$(TOPDIR)/build/fna-src/FAudio/src -I$(TOPDIR)/build/fna-src/FAudio/include -I$(PORTLIBS)/include/SDL2
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map) \
 			-Wl,--wrap=mono_codeman_enable_write_ex -Wl,--wrap=mono_codeman_disable_write_ex \
-			-Wl,--wrap=threadCreate
+			-Wl,--wrap=threadCreate \
+			-Wl,--wrap=FAudio_PlatformInit -Wl,--wrap=FAudio_PlatformQuit \
+			-Wl,--wrap=FAudio_PlatformGetDeviceCount -Wl,--wrap=FAudio_PlatformGetDeviceDetails
 
 AOT_OBJS	:=	$(wildcard $(TOPDIR)/build/aot/*.o)
 ifneq ($(strip $(AOT_OBJS)),)

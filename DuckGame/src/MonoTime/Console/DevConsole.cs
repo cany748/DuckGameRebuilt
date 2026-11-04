@@ -549,6 +549,10 @@ namespace DuckGame
             }
             if (DevConsole.showFPS)
             {
+#if SWITCH
+                SwitchStats.Draw();
+                return;
+#endif
                 _core.fpsfont.DrawOutline(Convert.ToString(FPSCounter.GetFPS(1), CultureInfo.InvariantCulture) + " FPS", new Vec2(50f, 8f), Color.White, Color.Black, 1.1f);
                 _core.fpsfont.DrawOutline(Convert.ToString(FPSCounter.GetFPS(0), CultureInfo.InvariantCulture) + " UPS", new Vec2(8f, 8f), Color.White, Color.Black, 1.1f);
             }

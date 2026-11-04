@@ -185,6 +185,9 @@ namespace DuckGame
 
         public static bool Update()
         {
+#if SWITCH
+            SwitchDisplay.Update();
+#endif
             if (_takeFocus > 0)
             {
                 --_takeFocus;

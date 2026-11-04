@@ -1167,6 +1167,9 @@ namespace DuckGame
         [HandleProcessCorruptedStateExceptions, SecurityCritical]
         protected override void Update(GameTime gameTime)
         {
+#if SWITCH
+            SwitchStats.UpdateStart();
+#endif
             if (!initializedFPS && Graphics.inFocus)
             {
                 initializedFPS = true;
@@ -1630,6 +1633,21 @@ namespace DuckGame
         [HandleProcessCorruptedStateExceptions, SecurityCritical]
         protected override void Draw(GameTime gameTime)
         {
+#if SWITCH
+            SwitchStats.DrawStart();
+            try
+            {
+                DrawFrame(gameTime);
+            }
+            finally
+            {
+                SwitchStats.DrawEnd();
+            }
+        }
+
+        private void DrawFrame(GameTime gameTime)
+        {
+#endif
             int num = started ? 1 : 0;
             ++framesSinceFocusChange;
             if (loseDevice > 0)

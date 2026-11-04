@@ -14,6 +14,7 @@ void *getsym_Libnx(const char *name)
     SYM_RESOLVE_EXISTING(extensionPadStateSize);
     
     SYM_RESOLVE_EXISTING(appletMainLoop);
+    SYM_RESOLVE_EXISTING(appletGetOperationMode);
 
     // Used by opentk
     SYM_RESOLVE_EXISTING(nwindowGetDefault);
