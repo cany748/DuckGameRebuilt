@@ -942,12 +942,18 @@ namespace DuckGame
                 }
             }
             if (Recorder.currentRecording != null) Recorder.currentRecording.LogBackgroundColor(backgroundColor);
+#if SWITCH
+            double sectionStart = SwitchStats.SectionStart();
+#endif
             BeforeDraw();
             Graphics.screen.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone, null, camera.getMatrix());
             Draw();
             things.Draw();
 
             Graphics.screen.End();
+#if SWITCH
+            SwitchStats.SectionEnd("level", sectionStart);
+#endif
             if (DevConsole.splitScreen && this is GameLevel) SplitScreen.Draw();
             else Layer.DrawLayers();
             if (DevConsole.rhythmMode && this is GameLevel)

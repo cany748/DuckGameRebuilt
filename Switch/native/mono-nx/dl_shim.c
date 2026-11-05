@@ -111,5 +111,13 @@ void* getsym_Internal(const char *name)
     else if (strcmp(name, "console_dispose") == 0) return (void *)console_dispose;
     else if (strcmp(name, "console_update") == 0) return(void *)console_update;
 
+    // Switch port diagnostics for the C# overlay (source/gpu_stats.c, source/faudio_switch.c).
+    extern void switch_gpu_stats(float *out, int count);
+    extern void switch_audio_stats(int *out);
+    extern const char *switch_audio_error_step(void);
+    if (strcmp(name, "switch_gpu_stats") == 0) return (void *)switch_gpu_stats;
+    if (strcmp(name, "switch_audio_stats") == 0) return (void *)switch_audio_stats;
+    if (strcmp(name, "switch_audio_error_step") == 0) return (void *)switch_audio_error_step;
+
 	return NULL;
 }

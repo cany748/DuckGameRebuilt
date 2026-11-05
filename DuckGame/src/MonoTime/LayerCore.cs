@@ -212,7 +212,13 @@ namespace DuckGame
                 {
                     //double num2 = 2 / _hybridList.Count * index / 2; what -Lucky
                     //double num3 = 2 / _hybridList.Count * (index + 1) / 2;
+#if SWITCH
+                    double sectionStart = SwitchStats.SectionStart();
+#endif
                     hybrid.Draw(true, true);
+#if SWITCH
+                    SwitchStats.SectionEnd(hybrid.name + "*", sectionStart);
+#endif
                     ++num1;
                 }
             }
@@ -234,7 +240,13 @@ namespace DuckGame
                         num2 = 3;
                     //double num3 = 2 / _lastDrawIndexCount * num1 / 2; what -Lucky
                     //double num4 = 2 / _lastDrawIndexCount * (num1 + num2) / 2;
+#if SWITCH
+                    double sectionStart = SwitchStats.SectionStart();
+#endif
                     hybrid.Draw(true);
+#if SWITCH
+                    SwitchStats.SectionEnd(hybrid.name, sectionStart);
+#endif
                     num1 += num2;
                 }
             }

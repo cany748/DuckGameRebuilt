@@ -95,6 +95,10 @@ int main(int argc, char *argv[])
     setenv("FNA3D_MOJOSHADER_PROFILE", "glsl120", 1);
     // DGR starts SDL text input at startup, which on Switch pops up the software keyboard.
     setenv("FNADROID", "1", 1);
+    // DGR allocates a lot every frame: a 32 MB nursery (default 4 MB) makes minor collections rarer.
+    // SGen otherwise lets the major heap grow toward the whole (half-of-RAM) mono heap before a full
+    // collection; past the soft limit major collections run every few nursery-sizes of growth.
+    setenv("MONO_GC_PARAMS", "nursery-size=32m,soft-heap-limit=512m", 1);
 
     // Horizon has no passwd database; .NET resolves special folders from these variables.
     mkdir(SAVE_ROOT, 0777);

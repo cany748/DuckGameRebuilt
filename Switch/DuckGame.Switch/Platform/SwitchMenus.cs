@@ -31,6 +31,8 @@ namespace DuckGame
 
         public static void Prune()
         {
+            // On by default while the port is being tuned; the toggle is under Graphics.
+            DevConsole.showFPS = true;
             Remove(Options._lastCreatedGraphicsMenu, GraphicsItems);
             AddShowFps(Options._lastCreatedGraphicsMenu);
             Remove(Options._lastCreatedAudioMenu, AudioItems);

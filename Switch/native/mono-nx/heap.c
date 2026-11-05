@@ -50,7 +50,9 @@ void __libnx_initheap(void)
 	// Give libnx half the heap and mono the other half, Align the mono side to 4MB because we know that's the biggest granularity it needs.
     // TODO: Consider a better split for this. In practice it's compilcated because mono might allocate internal data structures via malloc, any mesa/opengl allocations are also handled by libnx.
 	size_t newlib_size = size / 2;
-	mono_heap_start = (((intptr_t)addr + newlib_size) + (0x400000 - 1)) & ~(0x400000 - 1);
+	// 32MB alignment (mono-nx used 4MB): SGen allocates its nursery first and needs it aligned to
+	// its size, and the Switch port uses a 32MB nursery (MONO_GC_PARAMS in main.c).
+	mono_heap_start = (((intptr_t)addr + newlib_size) + (0x2000000 - 1)) & ~(0x2000000 - 1);
 	mono_heap_end   = (intptr_t)addr + size;
 
     libnx_heap_start = (intptr_t)addr;
