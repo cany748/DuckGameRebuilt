@@ -1,4 +1,4 @@
-// Per-frame counters for the FNA3D calls made from C#, shown by the "Show FPS" overlay.
+// Per-frame counters for the FNA3D calls made from C# and for GC pauses, shown by the "Show FPS" overlay.
 // The functions are linked with -Wl,--wrap, which only redirects the references from the P/Invoke
 // symbol table (dlshim_fna.c); FNA3D's internal calls are untouched.
 
@@ -21,6 +21,9 @@ enum
     STAT_EFFECTS,
     STAT_TARGETS,
     STAT_SWAP_MS,
+    STAT_GC_MS,    /* since the previous switch_gpu_stats() call, not per frame */
+    STAT_GC_COUNT, /* same */
+    STAT_GC_MAX_MS,
     STAT_COUNT
 };
 
@@ -98,9 +101,46 @@ void __wrap_FNA3D_SwapBuffers(FNA3D_Device *d, void *src, void *dst, void *windo
     memset(current, 0, sizeof(current));
 }
 
+// GC pauses: time from stopping the world to restarting it, summed per frame.
+#include <mono/metadata/profiler.h>
+
+static uint64_t gc_pause_start;
+static double gc_window[3]; /* total ms, count, longest ms */
+
+static void on_gc_event(MonoProfiler *prof, MonoProfilerGCEvent event, uint32_t generation, mono_bool is_serial)
+{
+    (void)prof;
+    (void)generation;
+    (void)is_serial;
+    if (event == MONO_GC_EVENT_PRE_STOP_WORLD)
+    {
+        gc_pause_start = now();
+    }
+    else if (event == MONO_GC_EVENT_POST_START_WORLD && gc_pause_start != 0)
+    {
+        double pause = ms_since(gc_pause_start);
+        gc_window[0] += pause;
+        gc_window[1]++;
+        if (pause > gc_window[2])
+            gc_window[2] = pause;
+        gc_pause_start = 0;
+    }
+}
+
+void frame_stats_install_gc_profiler(void)
+{
+    MonoProfilerHandle handle = mono_profiler_create(NULL);
+    mono_profiler_set_gc_event_callback(handle, on_gc_event);
+}
+
 // Called from C# (DllImport "__Internal"): copies the counters of the last presented frame.
 void switch_gpu_stats(float *out, int count)
 {
-    for (int i = 0; i < count && i < STAT_COUNT; i++)
+    for (int i = 0; i < count && i < STAT_GC_MS; i++)
         out[i] = (float)last_frame[i];
+    for (int i = 0; i < 3 && STAT_GC_MS + i < count; i++)
+    {
+        out[STAT_GC_MS + i] = (float)gc_window[i];
+        gc_window[i] = 0;
+    }
 }

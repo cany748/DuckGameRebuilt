@@ -385,7 +385,7 @@ namespace DuckGame
             MTSpriteBatchItem batchItem = _batcher.CreateBatchItemDepth(depth);
             batchItem.Depth = depth;
 
-            if (!texture.skipSpriteAtlas && texture.Texbase != null && texture.Texbase.Name != null && Content.offests.TryGetValue(texture.Texbase.Name, out Microsoft.Xna.Framework.Rectangle offset))
+            if (!texture.skipSpriteAtlas && texture.TryGetAtlasOffset(out Microsoft.Xna.Framework.Rectangle offset))
             {
                 batchItem.usingspriteatlas = true;
                 batchItem.NormalTexture = texture;
@@ -457,7 +457,7 @@ namespace DuckGame
                 _tempRect.width = texture.width;
                 _tempRect.height = texture.height;
             }
-            if ((fx == null || fx.spsupport) && !texture.skipSpriteAtlas && texture.Texbase != null && texture.Texbase.Name != null && Content.offests.TryGetValue(texture.Texbase.Name, out Microsoft.Xna.Framework.Rectangle offset))
+            if ((fx == null || fx.spsupport) && !texture.skipSpriteAtlas && texture.TryGetAtlasOffset(out Microsoft.Xna.Framework.Rectangle offset))
             {
                 batchItem.NormalTexture = texture;
                 batchItem.usingspriteatlas = true;
@@ -482,7 +482,7 @@ namespace DuckGame
                     _texCoordBR.x = _texCoordTL.x;
                     _texCoordTL.x = x;
                 }
-                batchItem.Set(destinationRectangle.x, destinationRectangle.y, -origin.x, -origin.y, destinationRectangle.z, destinationRectangle.w, (float)Math.Sin(rotation), (float)Math.Cos(rotation), color, _texCoordTL, _texCoordBR);
+                batchItem.Set(destinationRectangle.x, destinationRectangle.y, -origin.x, -origin.y, destinationRectangle.z, destinationRectangle.w, rotation == 0f ? 0f : (float)Math.Sin(rotation), rotation == 0f ? 1f : (float)Math.Cos(rotation), color, _texCoordTL, _texCoordBR);
                 if (Graphics.recordMetadata)
                 {
                     batchItem.MetaData = new MTSpriteBatchItemMetaData
@@ -559,7 +559,7 @@ namespace DuckGame
             //    //st.GetFrame(0).GetMethod().DeclaringType.Name
             //    MTSpriteBatcher.Texidonthave.Add(batchItem.Texture);
             //}
-            batchItem.Set(destinationRectangle.x, destinationRectangle.y, -origin.x, -origin.y, destinationRectangle.z, destinationRectangle.w, (float)Math.Sin(rotation), (float)Math.Cos(rotation), color, _texCoordTL, _texCoordBR);
+            batchItem.Set(destinationRectangle.x, destinationRectangle.y, -origin.x, -origin.y, destinationRectangle.z, destinationRectangle.w, rotation == 0f ? 0f : (float)Math.Sin(rotation), rotation == 0f ? 1f : (float)Math.Cos(rotation), color, _texCoordTL, _texCoordBR);
             if (Graphics.recordMetadata)
             {
                 batchItem.MetaData = new MTSpriteBatchItemMetaData

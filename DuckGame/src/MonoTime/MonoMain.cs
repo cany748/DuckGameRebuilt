@@ -1678,7 +1678,13 @@ namespace DuckGame
                     else
                     {
                         RunDraw(gameTime);
+#if SWITCH
+                        double sw_present = SwitchStats.SectionStart();
+#endif
                         Graphics.SetRenderTargetToScreen();
+#if SWITCH
+                        SwitchStats.SectionEnd("present", sw_present);
+#endif
                         if (Graphics._screenBufferTarget != null)
                         {
                             _tempRecordingReference = Recorder.currentRecording;
@@ -1693,7 +1699,13 @@ namespace DuckGame
                         }
                         Graphics.UpdateScreenViewport();
                         GraphicsDevice.SetRenderTarget(null);
+#if SWITCH
+                        double sw_basedraw = SwitchStats.SectionStart();
+#endif
                         base.Draw(gameTime);
+#if SWITCH
+                        SwitchStats.SectionEnd("basedraw", sw_basedraw);
+#endif
                         Graphics.drawing = false;
                     }
                 }
@@ -2011,9 +2023,15 @@ namespace DuckGame
                         }
                         Graphics.SetRenderTarget(null);
                         Level.DrawCurrentLevel();
+#if SWITCH
+                        double sw_ondraw = SwitchStats.SectionStart();
+#endif
                         Graphics.screen.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone, null, Resolution.getTransformationMatrix());
                         OnDraw();
                         Graphics.screen.End();
+#if SWITCH
+                        SwitchStats.SectionEnd("ondraw", sw_ondraw);
+#endif
                         if (closeMenuUpdate.Count > 0)
                         {
                             Layer.HUD.Begin(true);

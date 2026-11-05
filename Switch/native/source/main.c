@@ -34,6 +34,9 @@ static void *run_game(void *arg)
 
     register_aot_modules();
 
+    extern void frame_stats_install_gc_profiler(void);
+    frame_stats_install_gc_profiler();
+
     // runtimeconfig.json isn't read by an embedding host, so feature switches go here.
     // EventSource needs EventPipe, which mono-nx doesn't build; resource keys avoid loading
     // resource sets just to format exception messages.
@@ -77,8 +80,39 @@ static void *run_game(void *arg)
 
     // -linux selects DGR's non-Windows code paths (no Win32 module hooks, single-threaded loading);
     // the rest switch off desktop services that don't exist on the console.
-    char *monoargs[] = {launch_dll, "-linux", "-nothreading", "-nosteam", "-nomods", "-noRPC", "-norebuiltupdates", "-nocloud"};
-    exit_code = mono_jit_exec(domain, assembly, sizeof(monoargs) / sizeof(monoargs[0]), monoargs);
+    char *monoargs[64] = {launch_dll, "-linux", "-nothreading", "-nosteam", "-nomods", "-noRPC", "-norebuiltupdates", "-nocloud"};
+    int argc = 8;
+    // Extra arguments from config.ini, e.g. args = -command "lev arcade" for repeatable benchmarks.
+    // Double quotes group words into one argument and are stripped.
+    char *extra = g_config.game_args ? io_strdup(g_config.game_args) : NULL;
+    for (char *p = extra; p && *p && argc < 63;)
+    {
+        while (*p == ' ')
+            p++;
+        if (!*p)
+            break;
+        char *start = p;
+        if (*p == '"')
+        {
+            p = strchr(p + 1, '"');
+            p = p ? p + 1 : start + strlen(start);
+        }
+        else
+        {
+            while (*p && *p != ' ')
+                p++;
+        }
+        if (*p)
+            *p++ = '\0';
+        if (*start == '"' && start[strlen(start) - 1] == '"' && strlen(start) > 1)
+        {
+            start[strlen(start) - 1] = '\0';
+            start++;
+        }
+        monoargs[argc++] = start;
+    }
+    exit_code = mono_jit_exec(domain, assembly, argc, monoargs);
+    free(extra);
 
     mono_jit_cleanup(domain);
     free(launch_dll);

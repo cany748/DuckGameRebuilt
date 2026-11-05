@@ -31,7 +31,7 @@ if [ "${AOT:-1}" = 1 ]; then
 fi
 
 echo "== native host (AOT=${AOT:-1})"
-docker run --rm -e AOT="${AOT:-1}" -v "$ROOT":/dgr -v "$MONO_NX_SDK":/sdk:ro -w /dgr/Switch/native "$IMAGE" bash -c '
+docker run --rm -e AOT="${AOT:-1}" -e MONO_AOT_OPT="$MONO_AOT_OPT" -v "$ROOT":/dgr -v "$MONO_NX_SDK":/sdk:ro -w /dgr/Switch/native "$IMAGE" bash -c '
 	set -e
 	./build_fna_libs.sh
 	mkdir -p build/gen

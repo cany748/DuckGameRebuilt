@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace DuckGame
@@ -14,13 +15,26 @@ namespace DuckGame
         private static extern int appletGetOperationMode();
 
         private static int _mode = -1;
+        private static bool _available = true;
 
         public static bool Docked => _mode != AppletOperationModeHandheld;
 
         // Called from Resolution.Update() every frame; queues a resolution change when the dock state changes.
         public static void Update()
         {
-            int mode = appletGetOperationMode();
+            if (!_available)
+                return;
+            int mode;
+            try
+            {
+                mode = appletGetOperationMode();
+            }
+            catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
+            {
+                // Not running on Switch (e.g. the desktop benchmark build): keep the desktop resolution.
+                _available = false;
+                return;
+            }
             if (mode == _mode)
                 return;
             _mode = mode;

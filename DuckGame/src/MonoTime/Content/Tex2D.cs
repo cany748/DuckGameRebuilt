@@ -30,6 +30,29 @@ namespace DuckGame
             }
         }
         public Texture2D Texbase => _base;
+
+        // The sprite atlas offset of a texture doesn't change, but looking it up hashes the texture
+        // name on every sprite drawn; the cache follows the atlas dictionary and the texture name.
+        private System.Collections.Generic.Dictionary<string, Microsoft.Xna.Framework.Rectangle> _atlasDictionary;
+        private int _atlasCount = -1;
+        private string _atlasName;
+        private bool _atlasFound;
+        private Microsoft.Xna.Framework.Rectangle _atlasOffset;
+
+        internal bool TryGetAtlasOffset(out Microsoft.Xna.Framework.Rectangle offset)
+        {
+            System.Collections.Generic.Dictionary<string, Microsoft.Xna.Framework.Rectangle> atlas = Content.offests;
+            string name = _base?.Name;
+            if (atlas != _atlasDictionary || atlas.Count != _atlasCount || !ReferenceEquals(name, _atlasName))
+            {
+                _atlasDictionary = atlas;
+                _atlasCount = atlas.Count;
+                _atlasName = name;
+                _atlasFound = name != null && atlas.TryGetValue(name, out _atlasOffset);
+            }
+            offset = _atlasOffset;
+            return _atlasFound;
+        }
         public override object nativeObject => _base;
 
         public override int width => _base == null ? -1 : _base.Width;

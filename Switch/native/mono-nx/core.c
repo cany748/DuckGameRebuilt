@@ -228,6 +228,8 @@ static int handle_ini_line(void *user, const char *section, const char *name, co
         pconfig->force_console_init = (strcmp(value, "true") == 0);
     else if (MATCH("nx", "exit_process_on_end"))
         pconfig->exit_process_on_end = (strcmp(value, "true") == 0);
+    else if (MATCH("game", "args"))
+        pconfig->game_args = inf_dup_unquote(value);
     else if (MATCH("nx", "force_full_application"))
         pconfig->force_full_application = (strcmp(value, "true") == 0);
     else

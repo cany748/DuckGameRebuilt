@@ -19,12 +19,15 @@ namespace DuckGame
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
         private static double _updateStart = -1, _drawStart = -1, _drawEnd = -1;
         private static double _updateMs, _drawMs, _waitMs;
-        private static readonly float[] Gpu = new float[7];
+        private static readonly float[] Gpu = new float[10];
         private static readonly int[] Audio = new int[4];
         private static BitmapFont _font;
+        private static bool _native = true;
         private static readonly Dictionary<string, double> Sections = new Dictionary<string, double>();
-        private static string _topSections = "";
+        private static readonly Dictionary<string, double> SectionAverages = new Dictionary<string, double>();
+        private static string _topSections = "", _topSections2 = "";
         private static string[] _lines;
+        private static double _sectionsMs, _otherMs, _frameStart = -1, _worstFrame, _worstShown;
         private static double _linesBuilt, _overlayMs;
 
         [DllImport("__Internal")]
@@ -52,6 +55,11 @@ namespace DuckGame
         public static void DrawStart()
         {
             double now = Now;
+            if (_frameStart >= 0)
+                _worstFrame = Math.Max(_worstFrame, now - _frameStart);
+            _frameStart = now;
+            // Layers drawn outside Draw() (e.g. the pause screen capture during Update) don't count.
+            Sections.Clear();
             if (_updateStart >= 0 && _updateStart > _drawStart)
                 Average(ref _updateMs, now - _updateStart);
             _drawStart = now;
@@ -61,8 +69,19 @@ namespace DuckGame
         {
             _drawEnd = Now;
             Average(ref _drawMs, _drawEnd - _drawStart);
-            if (Sections.Count > 0 && FPSCounter.GetFPS(1) > 0 && (int)_drawEnd / 500 != (int)_drawStart / 500)
-                _topSections = string.Join("  ", Sections.OrderByDescending(s => s.Value).Take(4).Select(s => Format("{0} {1:0.0}", s.Key, s.Value)));
+            double sections = 0;
+            foreach (KeyValuePair<string, double> section in Sections)
+            {
+                sections += section.Value;
+                SectionAverages.TryGetValue(section.Key, out double average);
+                SectionAverages[section.Key] = average + (section.Value - average) * Smoothing;
+            }
+            // Sections that weren't drawn this frame decay toward zero.
+            foreach (string name in SectionAverages.Keys.ToList())
+                if (!Sections.ContainsKey(name))
+                    SectionAverages[name] *= 1 - Smoothing;
+            Average(ref _sectionsMs, sections);
+            _otherMs = _drawMs - _sectionsMs - _overlayMs;
             Sections.Clear();
         }
 
@@ -97,25 +116,43 @@ namespace DuckGame
             Graphics.DrawRect(new Vec2(4f, 4f), new Vec2(12f + width, 8f + _lines.Length * 15f), Color.Black * 0.6f, 1f);
             for (int i = 0; i < _lines.Length; i++)
                 _font.Draw(_lines[i], new Vec2(8f, 8f + i * 15f), Color.White, 1.1f);
-            _overlayMs = Now - start;
+            Average(ref _overlayMs, Now - start);
         }
 
         private static string[] BuildLines()
         {
-            switch_gpu_stats(Gpu, Gpu.Length);
-            switch_audio_stats(Audio);
+            if (_native)
+            {
+                try
+                {
+                    switch_gpu_stats(Gpu, Gpu.Length);
+                    switch_audio_stats(Audio);
+                }
+                catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
+                {
+                    _native = false; // desktop benchmark build: no native counters
+                }
+            }
+            // Worst values since the previous refresh (4 per second): stutters don't show in averages.
+            _worstShown = _worstFrame;
+            _worstFrame = 0;
+            string[] top = SectionAverages.OrderByDescending(x => x.Value).Take(6).Select(x => Format("{0} {1:0.0}", x.Key, x.Value)).ToArray();
+            _topSections = string.Join("  ", top.Take(3));
+            _topSections2 = string.Join("  ", top.Skip(3));
             return new[]
             {
                 Format("{0} FPS  {1} UPS", FPSCounter.GetFPS(1), FPSCounter.GetFPS(0)),
                 Format("UPD {0:0.0}  DRW {1:0.0}  WAIT {2:0.0}  (overlay {3:0.0}) ms", _updateMs, _drawMs - _overlayMs, _waitMs, _overlayMs),
-                "DRW: " + _topSections,
+                Format("DRW: other {0:0.0}  {1}", _otherMs, _topSections),
+                "     " + _topSections2,
+                Format("worst frame {0:0.0}ms  GC {1} pauses {2:0.0}ms max {3:0.0}ms /250ms", _worstShown, Gpu[8], Gpu[7], Gpu[9]),
                 Format("GL {0} draws {1:0.0}ms  up {2} {3:0.0}ms  fx {4} rt {5}  swap {6:0.0}ms",
                     Gpu[0], Gpu[1], Gpu[2], Gpu[3], Gpu[4], Gpu[5], Gpu[6]),
                 Format("{0}x{1} {2}  GC {3}MB  gen0 {4} gen1 {5}",
                     Graphics.width, Graphics.height, SwitchDisplay.Docked ? "DOCK" : "HANDHELD",
                     GC.GetTotalMemory(false) / (1024 * 1024), GC.CollectionCount(0), GC.CollectionCount(1)),
                 Format("AUDIO {0} mixed {1} starved {2} {3}", AudioState(Audio[0]), Audio[1], Audio[2],
-                    Audio[3] == 0 ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3])),
+                    Audio[3] == 0 || !_native ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3])),
             };
         }
 

@@ -15,6 +15,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/build/aot"
 GEN="$HERE/build/gen"
 AOT="$MONO_NX_ROOT/artifacts/bin/mono/linux.x64.Debug/cross/linux-x64/libnx-arm64/mono-aot-cross"
+# Extra code generation optimizations (MONO_AOT_OPT, e.g. "-O=all,-unsafe"); empty = Mono's defaults.
+MONO_OPT=${MONO_AOT_OPT:-}
 # DGR is large and generic-heavy; the defaults (1000s) run out at runtime.
 AOT_OPTS="full,interp,static,direct-icalls,nodebug,ntrampolines=40000,ngsharedvt-trampolines=8192,nimt-trampolines=8192,tool-prefix=aarch64-none-elf-"
 
@@ -40,7 +42,7 @@ while read -r src; do
 		echo "aot: $name up to date"
 	else
 		echo "aot: $name"
-		if ! MONO_PATH="$INPUT" "$AOT" --path="$INPUT" --aot="$AOT_OPTS,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
+		if ! MONO_PATH="$INPUT" "$AOT" $MONO_OPT --path="$INPUT" --aot="$AOT_OPTS,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
 			# The (debug) cross compiler fails on a few assemblies; they stay interpreted.
 			echo "aot: FAILED $name, skipped (see $OUT/$name.log)" | tee -a "$OUT/failed.txt"
 			rm -f "$obj"

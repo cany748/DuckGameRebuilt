@@ -331,6 +331,8 @@ namespace DuckGame
 
         public virtual void Update()
         {
+            if (_transparentRemove.Count > 0 || _opaqueRemove.Count > 0)
+                ++version;
             foreach (Thing thing in _transparentRemove)
                 _transparent.Remove(thing);
             foreach (Thing thing in _opaqueRemove)
@@ -508,6 +510,13 @@ namespace DuckGame
 
             Graphics.polyBatcher.UpdateMatricesForCurrentLayer();
 
+#if SWITCH
+            if (transparent && target == null)
+            {
+                DrawList drawn = _shareDrawObjects ?? this;
+                StaticLayerCache.Prepare(this, drawn == this ? _transparent : _shareDrawObjects._transparent, drawn.version);
+            }
+#endif
 
             Begin(transparent, isTargetDraw);
             if (target != null && !isTargetDraw)
@@ -539,6 +548,10 @@ namespace DuckGame
                     transparent1 = _shareDrawObjects._transparent;
                     opaque = _shareDrawObjects._opaque;
                 }
+#if SWITCH
+                if (transparent && !skipDrawing)
+                    transparent1 = StaticLayerCache.Draw(this, transparent1);
+#endif
                 if (!skipDrawing)
                 {
                     if (transparent)

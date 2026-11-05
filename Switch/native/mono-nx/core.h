@@ -46,6 +46,8 @@ struct AppConfiguration
     bool force_full_application;
 
     bool enable_debug_server;
+
+    char *game_args; /* [game] args: extra command line for DuckGame, split on spaces */
 };
 
 extern struct AppConfiguration g_config;

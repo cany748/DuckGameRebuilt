@@ -909,8 +909,14 @@ namespace DuckGame
                 currentlyShadering = true;
             }
             StartDrawing();
+#if SWITCH
+            double sw_predraw = SwitchStats.SectionStart();
+#endif
             foreach (IDrawToDifferentLayers toDifferentLayers in things[typeof(IDrawToDifferentLayers)])
                 toDifferentLayers.OnDrawLayer(Layer.PreDrawLayer);
+#if SWITCH
+            SwitchStats.SectionEnd("predraw", sw_predraw);
+#endif
             Layer.DrawTargetLayers();
             Vec3 vec = backgroundColor.ToVector3() * Graphics.fade;
             vec.x += Graphics.flashAddRenderValue;
@@ -962,7 +968,13 @@ namespace DuckGame
                 RhythmMode.Draw();
                 Graphics.screen.End();
             }
+#if SWITCH
+            double sw_afterlayers = SwitchStats.SectionStart();
+#endif
             AfterDrawLayers();
+#if SWITCH
+            SwitchStats.SectionEnd("afterlayers", sw_afterlayers);
+#endif
 
             if (currentlyShadering)
             {

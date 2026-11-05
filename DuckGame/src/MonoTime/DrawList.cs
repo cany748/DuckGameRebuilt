@@ -9,8 +9,12 @@ namespace DuckGame
         protected HashSet<Thing> _transparentRemove = new HashSet<Thing>();
         protected HashSet<Thing> _opaqueRemove = new HashSet<Thing>();
 
+        // Bumped on every membership change, so caches of the drawn things know when to rebuild.
+        public int version;
+
         public void Add(Thing obj)
         {
+            ++version;
             if (obj.opaque)
             {
                 _opaque.Add(obj);
@@ -25,6 +29,7 @@ namespace DuckGame
 
         public void Remove(Thing obj)
         {
+            ++version;
             if (obj.opaque)
                 _opaque.Remove(obj);
             else
@@ -33,6 +38,7 @@ namespace DuckGame
 
         public void RemoveSoon(Thing obj)
         {
+            ++version;
             if (obj.opaque)
                 _opaqueRemove.Add(obj);
             else
@@ -41,6 +47,7 @@ namespace DuckGame
 
         public void Clear()
         {
+            ++version;
             _transparent.Clear();
             _transparentRemove.Clear();
             _opaque.Clear();
