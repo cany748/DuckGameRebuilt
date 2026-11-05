@@ -1739,6 +1739,9 @@ namespace DuckGame
             if (Graphics.device.IsDisposed)
                 return;
 
+#if SWITCH
+            SwitchStats.Mark("rundraw-start");
+#endif
             Graphics.SetScissorRectangle(new Rectangle(0f, 0f, Graphics.width, Graphics.height));
             if (Recorder.currentRecording != null)
                 Recorder.currentRecording.NextFrame();
@@ -1910,6 +1913,9 @@ namespace DuckGame
                 if (Level.current == null)
                     return;
                 Reflection.Render();
+#if SWITCH
+                SwitchStats.Mark("started");
+#endif
                 if (!takingShot)
                 {
                     takingShot = true;
@@ -2022,7 +2028,13 @@ namespace DuckGame
                             _pauseMaterial.dim = 0.6f;
                         }
                         Graphics.SetRenderTarget(null);
+#if SWITCH
+                        SwitchStats.Mark("before-level");
+#endif
                         Level.DrawCurrentLevel();
+#if SWITCH
+                        SwitchStats.Mark("after-level");
+#endif
 #if SWITCH
                         double sw_ondraw = SwitchStats.SectionStart();
 #endif

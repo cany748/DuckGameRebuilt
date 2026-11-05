@@ -21,6 +21,7 @@ enum
     STAT_EFFECTS,
     STAT_TARGETS,
     STAT_SWAP_MS,
+    STAT_CLEAR_MS,
     STAT_GC_MS,    /* since the previous switch_gpu_stats() call, not per frame */
     STAT_GC_COUNT, /* same */
     STAT_GC_MAX_MS,
@@ -89,6 +90,16 @@ void __wrap_FNA3D_SetRenderTargets(FNA3D_Device *d, void *targets, int32_t count
     __real_FNA3D_SetRenderTargets(d, targets, count, depth, format, preserve);
     current[STAT_TARGETS]++;
     current[STAT_DRAW_MS] += ms_since(t);
+}
+
+// The first clear of the backbuffer after a swap blocks until the system hands back a free buffer
+// (vsync), so this shows time spent waiting rather than working.
+void __real_FNA3D_Clear(FNA3D_Device *, int, void *, float, int32_t);
+void __wrap_FNA3D_Clear(FNA3D_Device *d, int options, void *color, float depth, int32_t stencil)
+{
+    uint64_t t = now();
+    __real_FNA3D_Clear(d, options, color, depth, stencil);
+    current[STAT_CLEAR_MS] += ms_since(t);
 }
 
 void __real_FNA3D_SwapBuffers(FNA3D_Device *, void *, void *, void *);

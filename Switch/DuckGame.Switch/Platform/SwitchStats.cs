@@ -19,7 +19,7 @@ namespace DuckGame
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
         private static double _updateStart = -1, _drawStart = -1, _drawEnd = -1;
         private static double _updateMs, _drawMs, _waitMs;
-        private static readonly float[] Gpu = new float[10];
+        private static readonly float[] Gpu = new float[11];
         private static readonly int[] Audio = new int[4];
         private static BitmapFont _font;
         private static bool _native = true;
@@ -28,6 +28,9 @@ namespace DuckGame
         private static string _topSections = "", _topSections2 = "";
         private static string[] _lines;
         private static double _sectionsMs, _otherMs, _frameStart = -1, _worstFrame, _worstShown;
+        // Time between sections is attributed to the next section or Mark() as ">name", so every
+        // millisecond of Draw() lands somewhere.
+        private static double _boundary, _pendingGap;
         private static double _linesBuilt, _overlayMs;
 
         [DllImport("__Internal")]
@@ -60,6 +63,7 @@ namespace DuckGame
             _frameStart = now;
             // Layers drawn outside Draw() (e.g. the pause screen capture during Update) don't count.
             Sections.Clear();
+            _boundary = now;
             if (_updateStart >= 0 && _updateStart > _drawStart)
                 Average(ref _updateMs, now - _updateStart);
             _drawStart = now;
@@ -68,6 +72,7 @@ namespace DuckGame
         public static void DrawEnd()
         {
             _drawEnd = Now;
+            Mark("end");
             Average(ref _drawMs, _drawEnd - _drawStart);
             double sections = 0;
             foreach (KeyValuePair<string, double> section in Sections)
@@ -86,17 +91,41 @@ namespace DuckGame
         }
 
         // Per-frame time of a named part of the draw (layers, level); the top ones are shown twice a second.
-        public static double SectionStart() => Now;
+        public static double SectionStart()
+        {
+            double now = Now;
+            _pendingGap = now - _boundary;
+            _boundary = now;
+            return now;
+        }
+
+        // Closes the current gap: the time since the last section or mark is reported as ">name".
+        public static void Mark(string name)
+        {
+            double now = Now;
+            AddSection(">" + name, now - _boundary);
+            _boundary = now;
+        }
+
+        private static void AddSection(string name, double elapsed)
+        {
+            if (elapsed <= 0)
+                return;
+            Sections.TryGetValue(name, out double total);
+            Sections[name] = total + elapsed;
+        }
 
         public static void SectionEnd(string name, double start)
         {
             name ??= "?";
+            AddSection(">" + name, _pendingGap);
+            _pendingGap = 0;
             double elapsed = Now - start;
             // The overlay is drawn inside the console layer; keep it out of the layer numbers.
             if (name == "CONSOLE")
                 elapsed -= _overlayMs;
-            Sections.TryGetValue(name, out double total);
-            Sections[name] = total + elapsed;
+            AddSection(name, elapsed);
+            _boundary = Now;
         }
 
         public static void Draw()
@@ -143,11 +172,11 @@ namespace DuckGame
             {
                 Format("{0} FPS  {1} UPS", FPSCounter.GetFPS(1), FPSCounter.GetFPS(0)),
                 Format("UPD {0:0.0}  DRW {1:0.0}  WAIT {2:0.0}  (overlay {3:0.0}) ms", _updateMs, _drawMs - _overlayMs, _waitMs, _overlayMs),
-                Format("DRW: other {0:0.0}  {1}", _otherMs, _topSections),
+                "DRW: " + _topSections,
                 "     " + _topSections2,
-                Format("worst frame {0:0.0}ms  GC {1} pauses {2:0.0}ms max {3:0.0}ms /250ms", _worstShown, Gpu[8], Gpu[7], Gpu[9]),
-                Format("GL {0} draws {1:0.0}ms  up {2} {3:0.0}ms  fx {4} rt {5}  swap {6:0.0}ms",
-                    Gpu[0], Gpu[1], Gpu[2], Gpu[3], Gpu[4], Gpu[5], Gpu[6]),
+                Format("worst frame {0:0.0}ms  GC {1} pauses {2:0.0}ms max {3:0.0}ms /250ms", _worstShown, Gpu[9], Gpu[8], Gpu[10]),
+                Format("GL clear {7:0.0} swap {6:0.0}  {0} draws {1:0.0}ms  up {2} {3:0.0}ms  fx {4} rt {5}",
+                    Gpu[0], Gpu[1], Gpu[2], Gpu[3], Gpu[4], Gpu[5], Gpu[6], Gpu[7]),
                 Format("{0}x{1} {2}  GC {3}MB  gen0 {4} gen1 {5}",
                     Graphics.width, Graphics.height, SwitchDisplay.Docked ? "DOCK" : "HANDHELD",
                     GC.GetTotalMemory(false) / (1024 * 1024), GC.CollectionCount(0), GC.CollectionCount(1)),

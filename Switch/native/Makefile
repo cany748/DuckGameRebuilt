@@ -51,7 +51,7 @@ LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*
 			-Wl,--wrap=FAudio_PlatformGetDeviceCount -Wl,--wrap=FAudio_PlatformGetDeviceDetails \
 			-Wl,--wrap=FNA3D_DrawIndexedPrimitives -Wl,--wrap=FNA3D_DrawPrimitives \
 			-Wl,--wrap=FNA3D_SetVertexBufferData -Wl,--wrap=FNA3D_SetTextureData2D \
-			-Wl,--wrap=FNA3D_ApplyEffect -Wl,--wrap=FNA3D_SetRenderTargets -Wl,--wrap=FNA3D_SwapBuffers
+			-Wl,--wrap=FNA3D_ApplyEffect -Wl,--wrap=FNA3D_SetRenderTargets -Wl,--wrap=FNA3D_SwapBuffers -Wl,--wrap=FNA3D_Clear
 
 AOT_OBJS	:=	$(wildcard $(TOPDIR)/build/aot/*.o)
 ifneq ($(strip $(AOT_OBJS)),)

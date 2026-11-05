@@ -908,6 +908,9 @@ namespace DuckGame
                 Graphics.SettingForShader = false;
                 currentlyShadering = true;
             }
+#if SWITCH
+            SwitchStats.Mark("dodraw-setup");
+#endif
             StartDrawing();
 #if SWITCH
             double sw_predraw = SwitchStats.SectionStart();
@@ -918,6 +921,9 @@ namespace DuckGame
             SwitchStats.SectionEnd("predraw", sw_predraw);
 #endif
             Layer.DrawTargetLayers();
+#if SWITCH
+            SwitchStats.Mark("target-layers");
+#endif
             Vec3 vec = backgroundColor.ToVector3() * Graphics.fade;
             vec.x += Graphics.flashAddRenderValue;
             vec.y += Graphics.flashAddRenderValue;
@@ -960,8 +966,14 @@ namespace DuckGame
 #if SWITCH
             SwitchStats.SectionEnd("level", sectionStart);
 #endif
+#if SWITCH
+            SwitchStats.Mark("clear");
+#endif
             if (DevConsole.splitScreen && this is GameLevel) SplitScreen.Draw();
             else Layer.DrawLayers();
+#if SWITCH
+            SwitchStats.Mark("drawlayers");
+#endif
             if (DevConsole.rhythmMode && this is GameLevel)
             {
                 Graphics.screen.Begin(SpriteSortMode.BackToFront, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone, null, Layer.HUD.camera.getMatrix());
