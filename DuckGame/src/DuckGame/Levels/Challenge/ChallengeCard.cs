@@ -76,15 +76,13 @@ namespace DuckGame
 
         public string MakeQuestionMarks(string val)
         {
-            for (int index = 0; index < val.Length; ++index)
+            char[] chars = val.ToCharArray();
+            for (int index = 0; index < chars.Length; ++index)
             {
-                if (val[index] != ' ')
-                {
-                    val = val.Remove(index, 1);
-                    val = val.Insert(index, "?");
-                }
+                if (chars[index] != ' ')
+                    chars[index] = '?';
             }
-            return val;
+            return new string(chars);
         }
 
         public bool HasNewTrophy() => _realSave.trophy != _save.trophy;

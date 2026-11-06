@@ -34,6 +34,8 @@ namespace AddedContent.Firebreak
 
             public string Name;
 
+            private Action _invoke;
+
             /// <summary>
             /// The layer this method will be invoked at for drawing
             /// </summary>
@@ -60,6 +62,7 @@ namespace AddedContent.Firebreak
             protected override void Implement()
             {
                 Name = CustomID ?? Member.Name;
+                _invoke = ((MethodInfo)Member).CreateDelegate<Action>();
                 AllDrawingContexts.Add(this);
             }
 
@@ -86,9 +89,9 @@ namespace AddedContent.Firebreak
             {
                 foreach (DrawingContextAttribute marker in AllDrawingContexts)
                 {
-                    if (marker.DoDraw && marker.Layer.HasFlag(layer))
+                    if (marker.DoDraw && (marker.Layer & layer) == layer)
                     {
-                        ((MethodInfo)marker.Member).Invoke(null, null);
+                        marker._invoke();
                     }
                 }
             }

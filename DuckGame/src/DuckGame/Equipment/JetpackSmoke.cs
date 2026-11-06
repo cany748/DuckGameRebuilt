@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace DuckGame
 {
@@ -16,8 +17,37 @@ namespace DuckGame
         private float s2 = 1f;
         private float lifeTake = 0.05f;
         private static int colorindex;
+        // A jetpack spawns one puff per frame; building three SpriteMaps for each is the bulk of its cost.
+        // Removal from the layers is deferred, so a puff removed this frame must not be reused at once:
+        // the queue is first-in first-out and always keeps a few back.
+        private const int PoolCapacity = 128;
+        private const int PoolReserve = 8;
+        private static readonly Queue<JetpackSmoke> Pool = new Queue<JetpackSmoke>();
+        private bool _pooled;
 
         public SpriteMap sprite => _sprite;
+
+        public static JetpackSmoke New(float xpos, float ypos)
+        {
+            if (NetworkDebugger.enabled || Pool.Count <= PoolReserve)
+                return new JetpackSmoke(xpos, ypos);
+            JetpackSmoke smoke = Pool.Dequeue();
+            smoke._pooled = false;
+            smoke.Init(xpos, ypos);
+            smoke.ResetProperties();
+            smoke._sprite.globalIndex = GetGlobalIndex();
+            smoke.globalIndex = GetGlobalIndex();
+            return smoke;
+        }
+
+        public override void Removed()
+        {
+            base.Removed();
+            if (_pooled || NetworkDebugger.enabled || Pool.Count >= PoolCapacity)
+                return;
+            _pooled = true;
+            Pool.Enqueue(this);
+        }
 
         public JetpackSmoke(float xpos, float ypos)
           : base()

@@ -33,6 +33,7 @@ namespace DuckGame
         {
             // On by default while the port is being tuned; the toggle is under Graphics.
             DevConsole.showFPS = true;
+            SwitchStats.detailed = Program.commandLine.Contains("-framestats");
             Remove(Options._lastCreatedGraphicsMenu, GraphicsItems);
             AddShowFps(Options._lastCreatedGraphicsMenu);
             Remove(Options._lastCreatedAudioMenu, AudioItems);
@@ -49,6 +50,7 @@ namespace DuckGame
         {
             if (menu == null)
                 return;
+            menu.Insert(new UIMenuItemToggle("Frame Stats", field: new FieldBinding(typeof(SwitchStats), nameof(SwitchStats.detailed))), 0);
             menu.Insert(new UIMenuItemToggle("Show FPS", field: new FieldBinding(typeof(DevConsole), nameof(DevConsole.showFPS))), 0);
         }
 

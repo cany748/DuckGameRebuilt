@@ -11,14 +11,14 @@ namespace AddedContent.Firebreak
         {
             public static List<UpdateContextAttribute> All = new();
 
+            // A delegate, not MethodInfo.Invoke: this runs every frame, and reflection stubs are
+            // dynamic methods, which AOT platforms can only interpret.
+            public Action Invoke { get; private set; }
+
             protected override void Implement()
             {
+                Invoke = ((MethodInfo)Member).CreateDelegate<Action>();
                 All.Add(this);
-            }
-
-            public void Invoke()
-            {
-                ((MethodInfo)Member).Invoke(null, null);
             }
         }
     }

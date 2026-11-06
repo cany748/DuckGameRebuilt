@@ -15,6 +15,8 @@ namespace AddedContent.Firebreak
         {
             public static List<ComplexDrawingContextAttribute> AllDrawingContexts = new();
 
+            private Action<Layer> _invoke;
+
             protected override void Implement()
             {
                 MethodInfo method = (MethodInfo)Member;
@@ -23,6 +25,7 @@ namespace AddedContent.Firebreak
                 if (parameters.Length != 1 || parameters[0].ParameterType != typeof(Layer))
                     throw new TargetParameterCountException("ComplexDrawingContext method structure should be FUNC(DuckGame.Layer)");
                 
+                _invoke = method.CreateDelegate<Action<Layer>>();
                 AllDrawingContexts.Add(this);
             }
 
@@ -30,7 +33,7 @@ namespace AddedContent.Firebreak
             {
                 foreach (ComplexDrawingContextAttribute marker in AllDrawingContexts)
                 {
-                    ((MethodInfo)marker.Member).Invoke(null, new[] {layer});
+                    marker._invoke(layer);
                 }
             }
         }

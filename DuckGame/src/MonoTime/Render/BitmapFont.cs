@@ -732,16 +732,16 @@ namespace DuckGame
                 {
                     if (maxWidth > 0)
                     {
-                        string source = "";
+                        int wordLength = 0;
                         int letterIndex = _letterIndex;
                         while (letterIndex < text.Length && text[letterIndex] != ' ' && text[letterIndex] != colorchar && text[letterIndex] != spritechar)
                         {
-                            source += text[letterIndex].ToString();
+                            ++wordLength;
                             ++letterIndex;
                             if (!enforceWidthByWord)
                                 break;
                         }
-                        if (num2 + source.Length * (_tileSize * scale.x) > maxWidth)
+                        if (num2 + wordLength * (_tileSize * scale.x) > maxWidth)
                         {
                             num1 += _texture.height * scale.y;
                             num2 = 0f;

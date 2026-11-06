@@ -25,6 +25,7 @@ enum
     STAT_GC_MS,    /* since the previous switch_gpu_stats() call, not per frame */
     STAT_GC_COUNT, /* same */
     STAT_GC_MAX_MS,
+    STAT_HEAP_MB,
     STAT_COUNT
 };
 
@@ -145,6 +146,8 @@ void frame_stats_install_gc_profiler(void)
 }
 
 // Called from C# (DllImport "__Internal"): copies the counters of the last presented frame.
+int64_t mono_gc_get_heap_size(void);
+
 void switch_gpu_stats(float *out, int count)
 {
     for (int i = 0; i < count && i < STAT_GC_MS; i++)
@@ -154,4 +157,6 @@ void switch_gpu_stats(float *out, int count)
         out[STAT_GC_MS + i] = (float)gc_window[i];
         gc_window[i] = 0;
     }
+    if (STAT_HEAP_MB < count)
+        out[STAT_HEAP_MB] = (float)(mono_gc_get_heap_size() / (1024 * 1024));
 }
