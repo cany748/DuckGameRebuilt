@@ -947,6 +947,13 @@ namespace DuckGame
             local2.right = right;
             state2.triggers.left = state1.Triggers.Left;
             state2.triggers.right = state1.Triggers.Right;
+#if SWITCH
+            // SDL reports SL/SR of a sideways Joy-Con as triggers, the only shoulder buttons it has.
+            if (state2.triggers.left > 0.5f)
+                state2.buttons |= PadButton.LeftShoulder;
+            if (state2.triggers.right > 0.5f)
+                state2.buttons |= PadButton.RightShoulder;
+#endif
             _connectedState = state1.IsConnected;
             return state2;
         }

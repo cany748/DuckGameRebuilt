@@ -10,6 +10,14 @@ namespace DuckGame
 {
     public class Input
     {
+#if SWITCH
+        // SDL reports buttons by position, so PadButton.A is Nintendo's B. Menus follow the labels instead.
+        private const PadButton MenuAccept = PadButton.B;
+        private const PadButton MenuBack = PadButton.A;
+#else
+        private const PadButton MenuAccept = PadButton.A;
+        private const PadButton MenuBack = PadButton.B;
+#endif
         public static InputCode konamiCode = new InputCode()
         {
               triggers = new List<string>()
@@ -192,7 +200,7 @@ namespace DuckGame
                     {Triggers.Ragdoll, (int)PadButton.RightShoulder},
                     {Triggers.Strafe, (int)PadButton.LeftShoulder},
                     {Triggers.Quack, (int)PadButton.B},
-                    {Triggers.Select, (int)PadButton.A},
+                    {Triggers.Select, (int)MenuAccept},
 
                     {Triggers.LeftTrigger, (int)PadButton.LeftTrigger},
                     {Triggers.RightTrigger, (int)PadButton.RightTrigger},
@@ -200,7 +208,7 @@ namespace DuckGame
                     {Triggers.RightBumper, (int)PadButton.RightShoulder},
                     {Triggers.LeftStick, (int)PadButton.LeftStick},
                     {Triggers.RightStick, (int)PadButton.RightStick},
-                    {Triggers.Cancel, (int)PadButton.B},
+                    {Triggers.Cancel, (int)MenuBack},
                     {Triggers.LeftOptionButton,       (int)PadButton.Back },
                     {Triggers.Menu1,       (int)PadButton.X },
                     {Triggers.Menu2,       (int)PadButton.Y },
@@ -227,7 +235,7 @@ namespace DuckGame
                     {Triggers.Ragdoll, (int)PadButton.RightShoulder},
                     {Triggers.Strafe, (int)PadButton.LeftShoulder},
                     {Triggers.Quack, (int)PadButton.B},
-                    {Triggers.Select, (int)PadButton.A},
+                    {Triggers.Select, (int)MenuAccept},
 
                     {Triggers.LeftTrigger, (int)PadButton.LeftTrigger},
                     {Triggers.RightTrigger, (int)PadButton.RightTrigger},
@@ -235,7 +243,7 @@ namespace DuckGame
                     {Triggers.RightBumper, (int)PadButton.RightShoulder},
                     {Triggers.LeftStick, (int)PadButton.LeftStick},
                     {Triggers.RightStick, (int)PadButton.RightStick},
-                    {Triggers.Cancel, (int)PadButton.B},
+                    {Triggers.Cancel, (int)MenuBack},
                     {Triggers.LeftOptionButton, (int)PadButton.Back},
                     {Triggers.Menu1, (int)PadButton.X},
                     {Triggers.Menu2, (int)PadButton.Y},
@@ -1126,8 +1134,8 @@ namespace DuckGame
                 inputProfile.Map(GetDevice<GenericController>(index), Triggers.Ragdoll, 512);
                 inputProfile.Map(GetDevice<GenericController>(index), Triggers.LeftTrigger, 8388608);
                 inputProfile.Map(GetDevice<GenericController>(index), Triggers.RightTrigger, 4194304);
-                inputProfile.Map(GetDevice<GenericController>(index), Triggers.Select, 4096);
-                inputProfile.Map(GetDevice<GenericController>(index), Triggers.Cancel, 8192);
+                inputProfile.Map(GetDevice<GenericController>(index), Triggers.Select, (int)MenuAccept);
+                inputProfile.Map(GetDevice<GenericController>(index), Triggers.Cancel, (int)MenuBack);
                 if (index == 0)
                     InputProfile.active = inputProfile;
             }
