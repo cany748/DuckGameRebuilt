@@ -83,4 +83,4 @@ Replace `System.Private.CoreLib.dll` with `artifacts/bin/mono/libnx.arm64.Releas
 
 ## Diagnostics
 
-`Show FPS`, `Frame Stats` and `CPU Boost` are under Options > Graphics. The arguments `-framestats` and `-cpubench` go to `[game] args` in `config.ini`: the second prints a fixed CPU benchmark (`BENCH` lines) to the log.
+`Show FPS` and `Frame Stats` are under Options > Graphics. The arguments `-framestats` and `-cpubench` go to `[game] args` in `config.ini`: the second prints a fixed CPU benchmark (`BENCH` lines) to the log.

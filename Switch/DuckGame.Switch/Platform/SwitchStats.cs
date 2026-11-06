@@ -250,9 +250,9 @@ namespace DuckGame
                         Gpu[0], Gpu[1], Gpu[2], Gpu[3], Gpu[4], Gpu[5], Gpu[6], Gpu[7]);
                 case 6:
                     // Not GC.GetTotalMemory: sgen walks the whole major heap for it (30+ ms here).
-                    return Format("{0}x{1} {2}  cpu {6}MHz  heap {3}MB  gen0 {4} gen1 {5}",
+                    return Format("{0}x{1} {2}  heap {3}MB  gen0 {4} gen1 {5}",
                         Graphics.width, Graphics.height, SwitchDisplay.Docked ? "DOCK" : "HANDHELD",
-                        Gpu[11], GC.CollectionCount(0), GC.CollectionCount(1), SwitchDisplay.cpuMhz);
+                        Gpu[11], GC.CollectionCount(0), GC.CollectionCount(1));
                 default:
                     return Format("AUDIO {0} mixed {1} starved {2} {3}", AudioState(Audio[0]), Audio[1], Audio[2],
                         Audio[3] == 0 || !_native ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3]));

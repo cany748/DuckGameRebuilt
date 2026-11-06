@@ -50,7 +50,6 @@ namespace DuckGame
         {
             if (menu == null)
                 return;
-            menu.Insert(new UIMenuItemToggle("CPU Boost", field: new FieldBinding(typeof(SwitchDisplay), nameof(SwitchDisplay.cpuBoost))), 0);
             menu.Insert(new UIMenuItemToggle("Frame Stats", field: new FieldBinding(typeof(SwitchStats), nameof(SwitchStats.detailed))), 0);
             menu.Insert(new UIMenuItemToggle("Show FPS", field: new FieldBinding(typeof(DevConsole), nameof(DevConsole.showFPS))), 0);
         }

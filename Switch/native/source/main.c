@@ -3,8 +3,6 @@
 #include <pthread.h>
 #include <sys/stat.h>
 
-void switch_cpu_boost_shutdown(void);
-
 #define SAVE_ROOT "/switch/DuckGame/home"
 #define GAME_DIR "/switch/DuckGame/game"
 
@@ -118,7 +116,6 @@ static void *run_game(void *arg)
     free(extra);
 
     mono_jit_cleanup(domain);
-    switch_cpu_boost_shutdown();
     free(launch_dll);
     return NULL;
 }

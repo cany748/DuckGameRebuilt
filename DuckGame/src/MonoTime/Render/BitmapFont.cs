@@ -639,7 +639,8 @@ namespace DuckGame
                 c = colorOverride;
             _previousColor = c;
             Color color = c;
-            if (input == null)
+            // The profile only picks button icons; looking it up for every string is wasted on plain text.
+            if (input == null && text.IndexOf(spritechar) >= 0)
             {
                 if (!MonoMain.started)
                 {

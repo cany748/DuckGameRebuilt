@@ -114,11 +114,9 @@ void* getsym_Internal(const char *name)
     // Switch port diagnostics for the C# overlay (source/gpu_stats.c, source/faudio_switch.c).
     extern void switch_gpu_stats(float *out, int count);
     extern void switch_audio_stats(int *out);
-    extern int switch_cpu_boost(int enabled);
     extern const char *switch_audio_error_step(void);
     if (strcmp(name, "switch_gpu_stats") == 0) return (void *)switch_gpu_stats;
     if (strcmp(name, "switch_audio_stats") == 0) return (void *)switch_audio_stats;
-    if (strcmp(name, "switch_cpu_boost") == 0) return (void *)switch_cpu_boost;
     if (strcmp(name, "switch_audio_error_step") == 0) return (void *)switch_audio_error_step;
 
 	return NULL;
