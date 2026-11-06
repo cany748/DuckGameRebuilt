@@ -84,3 +84,10 @@ Replace `System.Private.CoreLib.dll` with `artifacts/bin/mono/libnx.arm64.Releas
 ## Diagnostics
 
 `Show FPS` and `Frame Stats` are under Options > Graphics. The arguments `-framestats` and `-cpubench` go to `[game] args` in `config.ini`: the second prints a fixed CPU benchmark (`BENCH` lines) to the log.
+
+More arguments for the same place:
+
+- `-profile` samples the render thread for 30 seconds, a minute after start, and writes `profile.txt` next to the nro. `tools/prof_report.py`-style symbolization applies to its `native+0x...` lines: they are offsets into `DuckGame.elf`.
+- `-levscan` prints a `LEVSCAN` line for every custom level with the mods it needs and the objects this build can't create.
+
+Frames longer than 25 ms are appended to `spikes.log` next to the nro whenever the level changes.

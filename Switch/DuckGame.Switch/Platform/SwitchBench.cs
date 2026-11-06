@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace DuckGame
 {
@@ -11,11 +12,24 @@ namespace DuckGame
         private const double StartAfterMs = 40000;
         private const int Rounds = 3;
 
-        private static bool _done;
+        private const double ProfileAfterMs = 60000;
+        private const double ProfileMs = 30000;
+        private const string ProfilePath = "/switch/DuckGame/profile.txt";
+
+        [DllImport("__Internal")]
+        private static extern int switch_profiler_start();
+
+        [DllImport("__Internal")]
+        private static extern void switch_profiler_stop([MarshalAs(UnmanagedType.LPUTF8Str)] string path);
+
+        private static bool _done, _profiling, _profiled, _scanned;
+        private static double _profileStart;
         private static long _sink;
 
         public static void RunOnce(double clockMs, BitmapFont font)
         {
+            Profile(clockMs);
+            ScanLevels(clockMs);
             if (_done || clockMs < StartAfterMs || !Program.commandLine.Contains("-cpubench"))
                 return;
             _done = true;
@@ -31,6 +45,59 @@ namespace DuckGame
                 Time("collision 2000", Collision);
             }
             Console.WriteLine("BENCH done " + _sink);
+        }
+
+        // -profile: samples the render thread for 30 seconds and writes profile.txt next to the nro.
+        private static void Profile(double clockMs)
+        {
+            if (_profiled || clockMs < ProfileAfterMs || !Program.commandLine.Contains("-profile"))
+                return;
+            if (!_profiling)
+            {
+                _profiling = switch_profiler_start() != 0;
+                _profileStart = clockMs;
+                _profiled = !_profiling;
+            }
+            else if (clockMs - _profileStart > ProfileMs)
+            {
+                switch_profiler_stop(ProfilePath);
+                _profiled = true;
+                Console.WriteLine("PROFILE written");
+            }
+        }
+
+        // -levscan: reports what every custom level needs: mods, and objects this build doesn't know.
+        private static void ScanLevels(double clockMs)
+        {
+            if (_scanned || clockMs < StartAfterMs || !Program.commandLine.Contains("-levscan"))
+                return;
+            _scanned = true;
+            foreach (string path in System.IO.Directory.GetFiles(DuckFile.levelDirectory, "*.lev", System.IO.SearchOption.AllDirectories))
+            {
+                try
+                {
+                    LevelData data = DuckFile.LoadLevel(path);
+                    int unknown = 0, total = 0;
+                    HashSet<string> missing = new HashSet<string>();
+                    foreach (BinaryClassChunk chunk in data.objects.objects)
+                    {
+                        ++total;
+                        if (Thing.LoadThing(chunk, false) == null)
+                        {
+                            ++unknown;
+                            missing.Add(chunk.GetProperty<string>("type") ?? "?");
+                        }
+                    }
+                    Console.WriteLine("LEVSCAN " + System.IO.Path.GetFileName(path) + " local=" + data.modData.hasLocalMods
+                        + " ws=" + string.Join(",", data.modData.workshopIDs) + " art=" + data.metaData.hasCustomArt
+                        + " objects=" + total + " unknown=" + unknown + " " + string.Join(",", missing));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("LEVSCAN " + System.IO.Path.GetFileName(path) + " FAILED " + e.GetType().Name + " " + e.Message);
+                }
+            }
+            Console.WriteLine("LEVSCAN done");
         }
 
         private static void Time(string name, Action action)

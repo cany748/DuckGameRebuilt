@@ -293,8 +293,8 @@ namespace DuckGame
                         Graphics.width, Graphics.height, SwitchDisplay.Docked ? "DOCK" : "HANDHELD",
                         Gpu[11], GC.CollectionCount(0), GC.CollectionCount(1));
                 default:
-                    return Format("AUDIO {0} mixed {1} starved {2} {3}", AudioState(Audio[0]), Audio[1], Audio[2],
-                        Audio[3] == 0 || !_native ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3]));
+                    return Format("AUDIO {0} mixed {1} starved {2} music {4}/{5} {3}", AudioState(Audio[0]), Audio[1], Audio[2],
+                        Audio[3] == 0 || !_native ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3]), OggPlayer.buffersPlayed, OggPlayer.buffersSilent);
             }
         }
 

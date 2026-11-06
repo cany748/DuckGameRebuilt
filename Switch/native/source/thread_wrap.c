@@ -31,3 +31,13 @@ Result __wrap_threadCreate(Thread *t, ThreadFunc entry, void *arg, void *stack_m
     svcSetThreadCoreMask(t->handle, core, APP_CORE_MASK);
     return rc;
 }
+
+/* Horizon moves threads onto any idle core of their mask, so a busy worker can end up competing with
+ * the game on core 0. Pins the calling thread to a core, below the game's priority. */
+void switch_pin_worker_thread(int core)
+{
+    s32 priority;
+    svcSetThreadCoreMask(CUR_THREAD_HANDLE, core, 1u << core);
+    if (R_SUCCEEDED(svcGetThreadPriority(&priority, CUR_THREAD_HANDLE)))
+        svcSetThreadPriority(CUR_THREAD_HANDLE, priority + 1);
+}

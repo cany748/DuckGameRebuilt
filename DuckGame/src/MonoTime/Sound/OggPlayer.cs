@@ -197,8 +197,12 @@ namespace DuckGame
             try
             {
                 _instance = new DynamicSoundEffectInstance(44100, AudioChannels.Stereo);
-                _buffer = new byte[_instance.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(500.0))];
+                _buffer = new byte[_instance.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(StreamBufferMs))];
                 _floatBuffer = new float[_buffer.Length / 2];
+#if SWITCH
+                for (int index = 0; index < _ring.Length; ++index)
+                    _ring[index] = new byte[_buffer.Length];
+#endif
                 _instance.BufferNeeded += new EventHandler<EventArgs>(Thread_Stream);
                 _decoderThread = new Thread(new ThreadStart(Thread_Decoder))
                 {
@@ -215,6 +219,117 @@ namespace DuckGame
             }
             _initialized = true;
         }
+
+#if SWITCH
+        // Music is decoded ahead on its own thread into a ring of short PCM buffers, and BufferNeeded (fired
+        // by FNA on the game thread) only hands over what's ready: it never waits for the decoder, which
+        // on this CPU takes far longer than a frame, and no song is ever kept in memory uncompressed.
+        private const double StreamBufferMs = 100.0;
+        private const int DecoderIdleMs = 20;
+
+        private readonly byte[][] _ring = new byte[8][];
+        private readonly int[] _ringLengths = new int[8];
+        private volatile int _ringRead, _ringWrite;
+        private volatile bool _songEnded;
+        public static int buffersPlayed, buffersSilent;
+
+        private void Thread_Decoder_LoadNewSong()
+        {
+            if (_decoderSong == _activeSong)
+                return;
+            lock (_decoderMutex)
+            {
+                if (_decoderSong == _activeSong)
+                    return;
+                if (_decoderSong != null)
+                    _decoderSong.Dispose();
+                _decoderSong = _activeSong;
+                _streamerSong = _activeSong;
+                _decodedSamplePosition = 0;
+                _ringRead = _ringWrite;
+                _songEnded = false;
+                _totalSamplesToDecode = _decoderSong == null ? 0 : (int)(_decoderSong.TotalSamples * 2L);
+            }
+        }
+
+        // Fills one ring slot; false when there's nothing to do for now.
+        private bool Thread_Decoder_DecodeChunk()
+        {
+            lock (_decoderMutex)
+            {
+                // SoundEffect sets the song before Initialize() creates the buffers.
+                if (_floatBuffer == null || _decoderSong == null || _songEnded || volume == 0.0 || _ringWrite - _ringRead >= _ring.Length)
+                    return false;
+                int count = _decoderSong.ReadSamples(_floatBuffer, 0, _floatBuffer.Length);
+                if (count == 0)
+                {
+                    if (_shouldLoop && _decodedSamplePosition > 0)
+                    {
+                        _decoderSong.DecodedPosition = 0;
+                        _decodedSamplePosition = 0;
+                    }
+                    else
+                        _songEnded = true;
+                    return true;
+                }
+                _decodedSamplePosition += count;
+                int slot = _ringWrite % _ring.Length;
+                byte[] pcm = _ring[slot];
+                for (int index = 0; index < count; ++index)
+                {
+                    int sample = (int)(short.MaxValue * _floatBuffer[index]);
+                    sample = sample > short.MaxValue ? short.MaxValue : sample < short.MinValue ? short.MinValue : sample;
+                    pcm[index * 2] = (byte)sample;
+                    pcm[index * 2 + 1] = (byte)(sample >> 8);
+                }
+                _ringLengths[slot] = count * 2;
+                ++_ringWrite;
+                return true;
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void switch_pin_worker_thread(int core);
+
+        private const int DecoderCore = 1;
+
+        private void Thread_Decoder()
+        {
+            try
+            {
+                switch_pin_worker_thread(DecoderCore);
+            }
+            catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
+            {
+                // Desktop benchmark build.
+            }
+            while (!_killDecodingThread)
+            {
+                Thread_Decoder_LoadNewSong();
+                if (!Thread_Decoder_DecodeChunk())
+                    Thread.Sleep(DecoderIdleMs);
+            }
+        }
+
+        private void Thread_Stream(object sender, EventArgs e)
+        {
+            int read = _ringRead;
+            if (_valid && volume != 0.0 && read != _ringWrite)
+            {
+                int slot = read % _ring.Length;
+                _instance.SubmitBuffer(_ring[slot], 0, _ringLengths[slot]);
+                _ringRead = read + 1;
+                ++buffersPlayed;
+                return;
+            }
+            if (_songEnded && read == _ringWrite)
+                Stop();
+            ++buffersSilent;
+            Array.Clear(_buffer, 0, _buffer.Length);
+            _instance.SubmitBuffer(_buffer, 0, _buffer.Length);
+        }
+#else
+        private const double StreamBufferMs = 500.0;
 
         private void Thread_Decoder_LoadNewSong()
         {
@@ -272,6 +387,64 @@ namespace DuckGame
                     Thread.Sleep(20);
             }
         }
+
+        private void Thread_Stream(object sender, EventArgs e)
+        {
+            lock (_streamingMutex)
+            {
+                int length = 0;
+                lock (_decoderDataMutex)
+                {
+                    Thread_Decoder_LoadNewSong();
+                    if (volume == 0.0 || !_valid || _decoderSong == null)
+                    {
+                        for (int index = 0; index < _buffer.Length; ++index)
+                            _buffer[index] = 0;
+                        _instance.SubmitBuffer(_buffer, 0, _buffer.Length);
+                        return;
+                    }
+                    do
+                        ;
+                    while (_samplesDecoded - _decodedSamplePosition < _floatBuffer.Length && Thread_Decoder_DecodeChunk());
+                    length = Math.Min(_totalSamplesToDecode - _decodedSamplePosition, _floatBuffer.Length);
+                    if (length > 0)
+                    {
+                        Array.Copy(_decodedData, _decodedSamplePosition, _floatBuffer, 0, length);
+                        _decodedSamplePosition += length;
+                    }
+                    if (length == 0)
+                    {
+                        if (_shouldLoop)
+                        {
+                            _decodedSamplePosition = 0;
+                            Array.Copy(_decodedData, _decodedSamplePosition, _floatBuffer, 0, _floatBuffer.Length);
+                            _decodedSamplePosition += _floatBuffer.Length;
+                            length = _floatBuffer.Length;
+                        }
+                        else
+                        {
+                            for (int index = 0; index < _floatBuffer.Length / 2; ++index)
+                            {
+                                _floatBuffer[index * 2] = 0f;
+                                _floatBuffer[index * 2 + 1] = 0f;
+                            }
+                            length = _floatBuffer.Length;
+                            Stop();
+                        }
+                    }
+                }
+                if (length <= 0)
+                    return;
+                for (int index = 0; index < length; ++index)
+                {
+                    short num = (short)Math.Max(Math.Min(short.MaxValue * _floatBuffer[index], short.MaxValue), short.MinValue);
+                    _buffer[index * 2] = (byte)((uint)num & byte.MaxValue);
+                    _buffer[index * 2 + 1] = (byte)(num >> 8 & byte.MaxValue);
+                }
+                _instance.SubmitBuffer(_buffer, 0, length * 2);
+            }
+        }
+#endif
 
         public void SetOgg(MemoryStream ogg, string path = null)
         {
@@ -446,63 +619,6 @@ namespace DuckGame
 
         public void Update()
         {
-        }
-
-        private void Thread_Stream(object sender, EventArgs e)
-        {
-            lock (_streamingMutex)
-            {
-                int length = 0;
-                lock (_decoderDataMutex)
-                {
-                    Thread_Decoder_LoadNewSong();
-                    if (volume == 0.0 || !_valid || _decoderSong == null)
-                    {
-                        for (int index = 0; index < _buffer.Length; ++index)
-                            _buffer[index] = 0;
-                        _instance.SubmitBuffer(_buffer, 0, _buffer.Length);
-                        return;
-                    }
-                    do
-                        ;
-                    while (_samplesDecoded - _decodedSamplePosition < _floatBuffer.Length && Thread_Decoder_DecodeChunk());
-                    length = Math.Min(_totalSamplesToDecode - _decodedSamplePosition, _floatBuffer.Length);
-                    if (length > 0)
-                    {
-                        Array.Copy(_decodedData, _decodedSamplePosition, _floatBuffer, 0, length);
-                        _decodedSamplePosition += length;
-                    }
-                    if (length == 0)
-                    {
-                        if (_shouldLoop)
-                        {
-                            _decodedSamplePosition = 0;
-                            Array.Copy(_decodedData, _decodedSamplePosition, _floatBuffer, 0, _floatBuffer.Length);
-                            _decodedSamplePosition += _floatBuffer.Length;
-                            length = _floatBuffer.Length;
-                        }
-                        else
-                        {
-                            for (int index = 0; index < _floatBuffer.Length / 2; ++index)
-                            {
-                                _floatBuffer[index * 2] = 0f;
-                                _floatBuffer[index * 2 + 1] = 0f;
-                            }
-                            length = _floatBuffer.Length;
-                            Stop();
-                        }
-                    }
-                }
-                if (length <= 0)
-                    return;
-                for (int index = 0; index < length; ++index)
-                {
-                    short num = (short)Math.Max(Math.Min(short.MaxValue * _floatBuffer[index], short.MaxValue), short.MinValue);
-                    _buffer[index * 2] = (byte)((uint)num & byte.MaxValue);
-                    _buffer[index * 2 + 1] = (byte)(num >> 8 & byte.MaxValue);
-                }
-                _instance.SubmitBuffer(_buffer, 0, length * 2);
-            }
         }
     }
 }
