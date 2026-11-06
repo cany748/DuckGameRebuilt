@@ -892,6 +892,7 @@ namespace DuckGame
             main.Run();
         }
         private static FieldInfo accumulatedElapsedTimefieldinfo;
+        public static TimeSpan GetAccumulatedElapsedTime(Game g) => (TimeSpan)accumulatedElapsedTimefieldinfo.GetValue(g);
         public static void SetAccumulatedElapsedTime(Game g, TimeSpan t)
         {
             accumulatedElapsedTimefieldinfo.SetValue(g, t);

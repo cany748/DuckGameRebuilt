@@ -17,6 +17,9 @@ namespace DuckGame
     {
         private const double Smoothing = 0.1;
         private const double MissedVsyncMs = 20;
+        private const double SpikeMs = 25;
+        private const int MaxSpikeLogChars = 8192;
+        private const string SpikeLogPath = "/switch/DuckGame/spikes.log";
         private const int LineCount = 8;
         // One line is rebuilt per refresh, so formatting never lands on a single frame.
         private const double LineRefreshMs = 30;
@@ -39,6 +42,9 @@ namespace DuckGame
         private static string _compactLine = "";
         private static int _nextLine, _missed, _missedShown;
         private static double _missedWindowStart;
+        private static readonly System.Text.StringBuilder SpikeLog = new System.Text.StringBuilder();
+        private static Level _spikeLevel;
+        private static int _spikeGen0, _spikeGen1;
         private static double _sectionsMs, _otherMs, _frameStart = -1, _worstFrame, _worstShown;
         // Update and draw of the frame before the slowest interval, to tell what made it miss.
         private static double _lastUpdateMs, _lastDrawMs, _worstUpdate, _worstDraw;
@@ -79,6 +85,8 @@ namespace DuckGame
                 double interval = now - _frameStart;
                 if (interval > MissedVsyncMs)
                     ++_missed;
+                if (interval > SpikeMs)
+                    LogSpike(now, interval);
                 if (interval > _worstFrame)
                 {
                     _worstFrame = interval;
@@ -87,6 +95,7 @@ namespace DuckGame
                 }
             }
             _frameStart = now;
+            FlushSpikesOnLevelChange();
             // Layers drawn outside Draw() (e.g. the pause screen capture during Update) don't count.
             Sections.Clear();
             _boundary = now;
@@ -96,6 +105,36 @@ namespace DuckGame
                 Average(ref _updateMs, _lastUpdateMs);
             }
             _drawStart = now;
+        }
+
+        // Stutters that come out of nowhere: which frame, what it spent its time on, whether a GC ran.
+        private static void LogSpike(double now, double interval)
+        {
+            if (SpikeLog.Length > MaxSpikeLogChars)
+                return;
+            int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1);
+            SpikeLog.Append(Format("{0:0}s {1:0.0}ms upd {2:0.0} drw {3:0.0} gen0+{4} gen1+{5} {6}\n", now / 1000, interval,
+                _lastUpdateMs, _lastDrawMs, gen0 - _spikeGen0, gen1 - _spikeGen1, Level.current?.GetType().Name));
+            _spikeGen0 = gen0;
+            _spikeGen1 = gen1;
+        }
+
+        // The SD card is slow: write only where a hitch can't be seen, when a level changes.
+        private static void FlushSpikesOnLevelChange()
+        {
+            if (Level.current == _spikeLevel)
+                return;
+            _spikeLevel = Level.current;
+            if (SpikeLog.Length == 0)
+                return;
+            try
+            {
+                System.IO.File.AppendAllText(SpikeLogPath, SpikeLog.ToString());
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException)
+            {
+            }
+            SpikeLog.Clear();
         }
 
         public static void DrawEnd()

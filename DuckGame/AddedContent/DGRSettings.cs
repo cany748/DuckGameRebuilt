@@ -365,7 +365,11 @@ namespace DuckGame
             Program.main.UseDrawRateLimiter = !UseVSync && UncappedFPS && TargetFrameRate >= 60;
 
 
+#if SWITCH
+            Program.main.TargetElapsedTime = TimeSpan.FromTicks(166667); // the panel is 60 Hz: a 61st update would be a visible hitch every second
+#else
             Program.main.TargetElapsedTime = TimeSpan.FromTicks(163934); // Default to 61ups -Lucky
+#endif
             MonoMain.graphics.ApplyChanges();
         }
 

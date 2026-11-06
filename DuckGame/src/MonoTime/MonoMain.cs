@@ -1635,6 +1635,7 @@ namespace DuckGame
         {
 #if SWITCH
             SwitchStats.DrawStart();
+            KeepUpdatesOnVsync();
             try
             {
                 DrawFrame(gameTime);
@@ -1644,6 +1645,19 @@ namespace DuckGame
                 SwitchStats.DrawEnd();
             }
         }
+
+        // Vsync paces the loop, but its period jitters around the update step: a frame that arrives a hair
+        // early makes Tick spin, and one a hair late eventually fits two updates. Keeping a little time in
+        // the accumulator gives every frame exactly one update; real delays (above the margin) still count.
+        private void KeepUpdatesOnVsync()
+        {
+            TimeSpan left = Program.GetAccumulatedElapsedTime(this);
+            if (left < VsyncSnapRange)
+                Program.SetAccumulatedElapsedTime(this, VsyncMargin);
+        }
+
+        private static readonly TimeSpan VsyncMargin = TimeSpan.FromMilliseconds(2);
+        private static readonly TimeSpan VsyncSnapRange = TimeSpan.FromMilliseconds(4);
 
         private void DrawFrame(GameTime gameTime)
         {
