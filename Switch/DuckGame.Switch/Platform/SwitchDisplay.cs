@@ -14,6 +14,15 @@ namespace DuckGame
         [DllImport("libnx")]
         private static extern int appletGetOperationMode();
 
+        [DllImport("__Internal")]
+        private static extern int switch_cpu_boost(int enabled);
+
+        // Horizon resets the clock on mode changes, so it's checked again now and then.
+        private const int ClockCheckFrames = 120;
+
+        public static bool cpuBoost = true;
+        public static int cpuMhz;
+        private static int _clockCheckIn;
         private static int _mode = -1;
         private static bool _available = true;
 
@@ -34,6 +43,11 @@ namespace DuckGame
                 // Not running on Switch (e.g. the desktop benchmark build): keep the desktop resolution.
                 _available = false;
                 return;
+            }
+            if (--_clockCheckIn <= 0)
+            {
+                _clockCheckIn = ClockCheckFrames;
+                cpuMhz = switch_cpu_boost(cpuBoost ? 1 : 0);
             }
             if (mode == _mode)
                 return;

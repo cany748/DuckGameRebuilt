@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <sys/stat.h>
 
+void switch_cpu_boost_shutdown(void);
+
 #define SAVE_ROOT "/switch/DuckGame/home"
 #define GAME_DIR "/switch/DuckGame/game"
 
@@ -22,6 +24,7 @@ static void register_aot_modules(void)
 {
 #ifdef DUCKGAME_AOT
 #include "aot_modules.h"
+
     mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP);
 #else
     mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
@@ -115,6 +118,7 @@ static void *run_game(void *arg)
     free(extra);
 
     mono_jit_cleanup(domain);
+    switch_cpu_boost_shutdown();
     free(launch_dll);
     return NULL;
 }

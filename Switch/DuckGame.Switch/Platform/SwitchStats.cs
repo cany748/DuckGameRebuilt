@@ -32,6 +32,8 @@ namespace DuckGame
         private static bool _native = true;
         private static readonly Dictionary<string, double> Sections = new Dictionary<string, double>();
         private static readonly Dictionary<string, double> SectionAverages = new Dictionary<string, double>();
+        private static readonly Dictionary<string, string> GapNames = new Dictionary<string, string>();
+        private static readonly List<string> SectionNames = new List<string>();
         private static string _topSections = "", _topSections2 = "";
         private static readonly string[] Lines = new string[LineCount];
         private static string _compactLine = "";
@@ -112,7 +114,9 @@ namespace DuckGame
                 SectionAverages[section.Key] = average + (section.Value - average) * Smoothing;
             }
             // Sections that weren't drawn this frame decay toward zero.
-            foreach (string name in SectionAverages.Keys.ToList())
+            SectionNames.Clear();
+            SectionNames.AddRange(SectionAverages.Keys);
+            foreach (string name in SectionNames)
                 if (!Sections.ContainsKey(name))
                     SectionAverages[name] *= 1 - Smoothing;
             Average(ref _sectionsMs, sections);
@@ -137,8 +141,15 @@ namespace DuckGame
             if (!Collecting)
                 return;
             double now = Now;
-            AddSection(">" + name, now - _boundary);
+            AddSection(GapName(name), now - _boundary);
             _boundary = now;
+        }
+
+        private static string GapName(string name)
+        {
+            if (!GapNames.TryGetValue(name, out string gap))
+                GapNames[name] = gap = ">" + name;
+            return gap;
         }
 
         private static void AddSection(string name, double elapsed)
@@ -154,7 +165,7 @@ namespace DuckGame
             if (!Collecting)
                 return;
             name ??= "?";
-            AddSection(">" + name, _pendingGap);
+            AddSection(GapName(name), _pendingGap);
             _pendingGap = 0;
             double elapsed = Now - start;
             // The overlay is drawn inside the console layer; keep it out of the layer numbers.
@@ -168,6 +179,7 @@ namespace DuckGame
         {
             double start = Now;
             _font ??= new BitmapFont("biosFont", 8) { scale = new Vec2(1.5f, 1.5f) };
+            SwitchBench.RunOnce(start, _font);
             if (start - _missedWindowStart >= 1000)
             {
                 _missedWindowStart = start;
@@ -238,9 +250,9 @@ namespace DuckGame
                         Gpu[0], Gpu[1], Gpu[2], Gpu[3], Gpu[4], Gpu[5], Gpu[6], Gpu[7]);
                 case 6:
                     // Not GC.GetTotalMemory: sgen walks the whole major heap for it (30+ ms here).
-                    return Format("{0}x{1} {2}  heap {3}MB  gen0 {4} gen1 {5}",
+                    return Format("{0}x{1} {2}  cpu {6}MHz  heap {3}MB  gen0 {4} gen1 {5}",
                         Graphics.width, Graphics.height, SwitchDisplay.Docked ? "DOCK" : "HANDHELD",
-                        Gpu[11], GC.CollectionCount(0), GC.CollectionCount(1));
+                        Gpu[11], GC.CollectionCount(0), GC.CollectionCount(1), SwitchDisplay.cpuMhz);
                 default:
                     return Format("AUDIO {0} mixed {1} starved {2} {3}", AudioState(Audio[0]), Audio[1], Audio[2],
                         Audio[3] == 0 || !_native ? "" : Format("err {0} 0x{1:X}", Marshal.PtrToStringAnsi(switch_audio_error_step()), Audio[3]));

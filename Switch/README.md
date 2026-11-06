@@ -68,3 +68,19 @@ DGR's own crash log is `/switch/DuckGame/game/ducklog.txt`, saves live in `/swit
 - SDL2 on Switch allows a single audio device, so music is streamed through
   `DynamicSoundEffectInstance` instead of FNA's `MediaPlayer`.
 - Unix domain sockets are rejected in the P/Invoke shim (Horizon has none).
+
+## Release framework
+
+The mono-nx SDK ships a Debug build of the framework: Mono then compiles it without inlining and keeps every `Debug.Assert`. Build `exelix11/dotnet_runtime` (branch `libnx`) in the devkitA64 image and overlay the result on copies of the SDK and of `sd_files`, then point `MONO_NX_SDK` and `MONO_NX_SD_FILES` at those copies:
+
+```sh
+docker run --rm -v $PWD:/mono-nx -w /mono-nx/dotnet_runtime -e ROOTFS_DIR=/opt/devkitpro \
+    -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 devkitpro/devkita64:20260219 \
+    ./build.sh --subset mono.corelib+libs.sfx -c Release --cross -a arm64 --os libnx
+```
+
+Replace `System.Private.CoreLib.dll` with `artifacts/bin/mono/libnx.arm64.Release/` and every framework dll with `artifacts/bin/runtime/net9.0-libnx-Release-arm64/`, keeping the Debug directory names of the SDK. The build reports NETSDK1188 and leaves out `System`, `System.Net`, `System.Net.Sockets` and `netstandard`; the SDK's copies of those work.
+
+## Diagnostics
+
+`Show FPS`, `Frame Stats` and `CPU Boost` are under Options > Graphics. The arguments `-framestats` and `-cpubench` go to `[game] args` in `config.ini`: the second prints a fixed CPU benchmark (`BENCH` lines) to the log.
