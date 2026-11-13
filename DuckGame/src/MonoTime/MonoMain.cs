@@ -1169,6 +1169,7 @@ namespace DuckGame
         {
 #if SWITCH
             SwitchStats.UpdateStart();
+            PerfTest.UpdateStart();
 #endif
             if (!initializedFPS && Graphics.inFocus)
             {
@@ -1635,6 +1636,7 @@ namespace DuckGame
         {
 #if SWITCH
             SwitchStats.DrawStart();
+            PerfTest.DrawStart();
             KeepUpdatesOnVsync();
             try
             {
@@ -1643,6 +1645,7 @@ namespace DuckGame
             finally
             {
                 SwitchStats.DrawEnd();
+                PerfTest.DrawEnd();
             }
         }
 
