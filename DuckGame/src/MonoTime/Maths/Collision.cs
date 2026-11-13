@@ -163,79 +163,38 @@ namespace DuckGame
             return num7 == 0f ? Vec2.Zero : new Vec2((num5 * num3 - num2 * num6) / num7, (num1 * num6 - num4 * num3) / num7);
         }
 
+        // One edge of the box against the line: false when the line lies outside it.
+        private static bool ClipLine(float direction, float distance, ref float enter, ref float exit)
+        {
+            if (direction == 0f)
+                return !(distance < 0f);
+            float t = distance / direction;
+            if (direction < 0f && enter < t)
+                enter = t;
+            else if (direction > 0f && exit > t)
+                exit = t;
+            return true;
+        }
+
         public static Vec2 LinePoint(Vec2 point1, Vec2 point2, Thing thing)
         {
             Vec2 vec2 = point2 - point1;
-            float[] numArray1 = new float[4]
-            {
-        -vec2.x,
-        vec2.x,
-        -vec2.y,
-        vec2.y
-            };
-            float[] numArray2 = new float[4]
-            {
-        point1.x - thing.left,
-        thing.right - point1.x,
-        point1.y - thing.top,
-        thing.bottom - point1.y
-            };
             float num1 = float.NegativeInfinity;
             float num2 = float.PositiveInfinity;
-            for (int index = 0; index < 4; ++index)
-            {
-                if (numArray1[index] == 0f)
-                {
-                    if (numArray2[index] < 0f)
-                        return Vec2.Zero;
-                }
-                else
-                {
-                    float num3 = numArray2[index] / numArray1[index];
-                    if (numArray1[index] < 0f && num1 < num3)
-                        num1 = num3;
-                    else if (numArray1[index] > 0f && num2 > num3)
-                        num2 = num3;
-                }
-            }
+            if (!ClipLine(-vec2.x, point1.x - thing.left, ref num1, ref num2) || !ClipLine(vec2.x, thing.right - point1.x, ref num1, ref num2)
+                || !ClipLine(-vec2.y, point1.y - thing.top, ref num1, ref num2) || !ClipLine(vec2.y, thing.bottom - point1.y, ref num1, ref num2))
+                return Vec2.Zero;
             return num1 > num2 || num1 > 1f || num1 < 0f ? Vec2.Zero : new Vec2(point1.x + num1 * vec2.x, point1.y + num1 * vec2.y);
         }
 
         public static Vec2 LinePoint(Vec2 point1, Vec2 point2, Rectangle rect)
         {
             Vec2 vec2 = point2 - point1;
-            float[] numArray1 = new float[4]
-            {
-        -vec2.x,
-        vec2.x,
-        -vec2.y,
-        vec2.y
-            };
-            float[] numArray2 = new float[4]
-            {
-        point1.x - rect.x,
-        rect.x + rect.width - point1.x,
-        point1.y - rect.y,
-        rect.y + rect.height - point1.y
-            };
             float num1 = float.NegativeInfinity;
             float num2 = float.PositiveInfinity;
-            for (int index = 0; index < 4; ++index)
-            {
-                if (numArray1[index] == 0f)
-                {
-                    if (numArray2[index] < 0f)
-                        return Vec2.Zero;
-                }
-                else
-                {
-                    float num3 = numArray2[index] / numArray1[index];
-                    if (numArray1[index] < 0f && num1 < num3)
-                        num1 = num3;
-                    else if (numArray1[index] > 0f && num2 > num3)
-                        num2 = num3;
-                }
-            }
+            if (!ClipLine(-vec2.x, point1.x - rect.x, ref num1, ref num2) || !ClipLine(vec2.x, rect.x + rect.width - point1.x, ref num1, ref num2)
+                || !ClipLine(-vec2.y, point1.y - rect.y, ref num1, ref num2) || !ClipLine(vec2.y, rect.y + rect.height - point1.y, ref num1, ref num2))
+                return Vec2.Zero;
             return num1 > num2 || num1 > 1f || num1 < 0f ? Vec2.Zero : new Vec2(point1.x + num1 * vec2.x, point1.y + num1 * vec2.y);
         }
     }
