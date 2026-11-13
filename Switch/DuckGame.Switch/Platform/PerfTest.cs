@@ -143,6 +143,7 @@ namespace DuckGame
             else
             {
                 Scenes.Insert(0, new KeyValuePair<string, Func<Level>>("control", () => Stock("city01")));
+                Scenes.Insert(1, new KeyValuePair<string, Func<Level>>(PerfRoom.SceneName, PerfRoom.Create));
             }
             NextScene();
         }
@@ -226,6 +227,8 @@ namespace DuckGame
                 _gen1 = GC.CollectionCount(1);
                 _allocated = GC.GetTotalAllocatedBytes(false);
             }
+            if (SceneName == PerfRoom.SceneName)
+                PerfRoom.Tick(level);
             DriveBots(level);
             if (Measuring && ++_measured >= _measureFrames)
             {
