@@ -1919,16 +1919,23 @@ namespace DuckGame
             }
             return list;
         }
+        private readonly List<Thing> _rectCandidates = new List<Thing>(256);
+
         public List<T> CollisionRectAllDan<T>(Vec2 p1, Vec2 p2, List<T> outList)
         {
             List<T> outList1 = outList == null ? new List<T>() : outList;
-            foreach (Thing thing in things.CollisionRectAll(p1, p2, typeof(T)))
+            List<Thing> candidates = _rectCandidates;
+            candidates.Clear();
+            things.CollisionRectAll(p1, p2, typeof(T), candidates);
+            for (int i = 0; i < candidates.Count; i++)
             {
+                Thing thing = candidates[i];
                 if (!thing.removeFromLevel && Collision.Rect(p1, p2, thing))
                 {
                     outList1.Add((T)(object)thing);
                 }
             }
+            candidates.Clear();
             //bool flag2 = !t.removeFromLevel && Collision.Rect(p1, p2, t);
             //System.Type key = typeof(T);
             //foreach (Thing dynamicObject in _things.GetDynamicObjects(key))

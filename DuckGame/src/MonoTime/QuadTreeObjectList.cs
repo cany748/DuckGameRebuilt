@@ -562,6 +562,62 @@ namespace DuckGame
         {
             return GetThings(thing.position, thing.right - thing.left, thing.bottom - thing.top, t);
         }
+        // CollisionRectAll for a caller that consumes everything at once: the same things in the same
+        // order, written into a list instead of coming through an iterator and a temporary cell array.
+        public void CollisionRectAll(Vec2 p1, Vec2 p2, Type t, List<Thing> into)
+        {
+            float width = p1.x - p2.x;
+            float height = p1.y - p2.y;
+            width = width > 0 ? width : -width;
+            height = height > 0 ? height : -height;
+            width += cellsize * 2;
+            height += cellsize * 2;
+            Vec2 position = new Vec2(p1.x + (width / 2), p1.y + (height / 2));
+            if (float.IsNaN(width) || float.IsNaN(height))
+                return;
+            height = height * 0.5f;
+            width = width * 0.5f;
+            int top = (int)((position.y + height + offset) / cellsize);
+            int bottom = (int)((position.y - height + offset) / cellsize);
+            int right = (int)((position.x + width + offset) / cellsize);
+            int left = (int)((position.x - width + offset) / cellsize);
+            int typekey = t.GetHashCode();
+            if (left == right && top == bottom)
+            {
+                if (Buckets.TryGetValue(new Vec2(left, bottom), out Dictionary<int, List<Thing>> cell) &&
+                    cell.TryGetValue(typekey, out List<Thing> cellThings))
+                {
+                    for (int i = 0; i < cellThings.Count; i++)
+                        into.Add(cellThings[i]);
+                }
+                return;
+            }
+            if (_queryIds > Int32.MaxValue - 1)
+            {
+                _queryIds = 0;
+            }
+            int queryId = _queryIds++;
+            for (int x = left; x <= right; x++)
+            {
+                for (int y = bottom; y <= top; y++)
+                {
+                    if (Buckets.TryGetValue(new Vec2(x, y), out Dictionary<int, List<Thing>> cell) &&
+                        cell.TryGetValue(typekey, out List<Thing> cellThings))
+                    {
+                        for (int i = 0; i < cellThings.Count; i++)
+                        {
+                            Thing item = cellThings[i];
+                            if (item._queryId != queryId)
+                            {
+                                item._queryId = queryId;
+                                into.Add(item);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         public IEnumerable<Thing> CollisionRectAll(Vec2 p1, Vec2 p2, Type t)
         {
             float Width = p1.x - p2.x;
