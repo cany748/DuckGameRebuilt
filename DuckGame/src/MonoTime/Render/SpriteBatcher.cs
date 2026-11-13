@@ -242,7 +242,77 @@ namespace DuckGame
 
 
 
-        List<float> keys = new List<float>();
+        // The depths in use this batch. A plain array with its own sort: List<float>.Sort() goes through
+        // shared generic code under Mono AOT, which made sorting a few dozen floats a visible cost.
+        // Same order as Array.Sort: NaN first, then ascending.
+        private sealed class DepthKeys
+        {
+            private float[] _values = new float[64];
+            public int Count;
+
+            public float this[int index] => _values[index];
+
+            public void Add(float value)
+            {
+                if (Count == _values.Length)
+                    Array.Resize(ref _values, Count * 2);
+                _values[Count++] = value;
+            }
+
+            public void Clear() => Count = 0;
+
+            public void Sort() => Sort(0, Count - 1);
+
+            private static bool Less(float a, float b) => a < b || (float.IsNaN(a) && !float.IsNaN(b));
+
+            private void Sort(int low, int high)
+            {
+                float[] values = _values;
+                while (high - low > 12)
+                {
+                    float pivot = values[low + (high - low) / 2];
+                    int i = low, j = high;
+                    while (i <= j)
+                    {
+                        while (Less(values[i], pivot))
+                            i++;
+                        while (Less(pivot, values[j]))
+                            j--;
+                        if (i <= j)
+                        {
+                            float swap = values[i];
+                            values[i] = values[j];
+                            values[j] = swap;
+                            i++;
+                            j--;
+                        }
+                    }
+                    if (j - low < high - i)
+                    {
+                        Sort(low, j);
+                        low = i;
+                    }
+                    else
+                    {
+                        Sort(i, high);
+                        high = j;
+                    }
+                }
+                for (int i = low + 1; i <= high; i++)
+                {
+                    float value = values[i];
+                    int j = i - 1;
+                    while (j >= low && Less(value, values[j]))
+                    {
+                        values[j + 1] = values[j];
+                        j--;
+                    }
+                    values[j + 1] = value;
+                }
+            }
+        }
+
+        private readonly DepthKeys keys = new DepthKeys();
 
         Dictionary<float, List<MTSpriteBatchItem>> _batchItemListv2 = new Dictionary<float, List<MTSpriteBatchItem>>();
         MTSpriteBatchItem LastSpriteBatchItem;
