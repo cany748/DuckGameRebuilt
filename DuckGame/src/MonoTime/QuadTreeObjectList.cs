@@ -358,8 +358,23 @@ namespace DuckGame
             if (thing.overrideLeniancy != -1) leniancy = thing.overrideLeniancy;
 
 
-            Vec2[] buckets = GetIdForObjThing(thing.topLeft - new Vec2(leniancy), thing.bottomRight + new Vec2(leniancy));//GetIdForObj(thing.position, thing.right - thing.left, thing.bottom - thing.top);
-            
+            Vec2 topLeft = thing.topLeft - new Vec2(leniancy), bottomRight = thing.bottomRight + new Vec2(leniancy);
+            // Nearly every call finds the thing in the cells it already occupies. The cell list of a box is
+            // a grid walked column by column, so its length, first and last cell identify it: compare those
+            // before building a new list.
+            int top = (int)((bottomRight.y + offset) / cellsize);
+            int left = (int)((topLeft.x + offset) / cellsize);
+            int bottom = (int)((topLeft.y + offset) / cellsize);
+            int right = (int)((bottomRight.x + offset) / cellsize);
+            int count = (right - left + 1) * (top - bottom + 1);
+            Vec2[] current = thing.Buckets;
+            if (count > 0 && right >= left && current.Length == count && current[0].x == left && current[0].y == bottom
+                && current[count - 1].x == right && current[count - 1].y == top)
+            {
+                return;
+            }
+            Vec2[] buckets = GetIdForObjThing(topLeft, bottomRight);//GetIdForObj(thing.position, thing.right - thing.left, thing.bottom - thing.top);
+
             if (thing.Buckets.SequenceEqual(buckets))
             {
                 return;
