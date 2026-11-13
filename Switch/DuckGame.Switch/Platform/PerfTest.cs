@@ -23,7 +23,7 @@ namespace DuckGame
         public static readonly List<KeyValuePair<string, Func<Level>>> Scenes = new List<KeyValuePair<string, Func<Level>>>();
 
         private static bool? _enabled;
-        private static bool _scan, _running, _finished, _verify, _native = true;
+        private static bool _scan, _running, _finished, _verify, _verifyAll, _profile, _native = true;
         private static uint _soundHash;
         private static int[] _pixels;
         private static int _pictureFrame;
@@ -39,9 +39,17 @@ namespace DuckGame
         private static double _glDraws, _glUploads, _glTargets;
         private static int _glFrames;
         private static readonly PerfBot[] Bots = new PerfBot[8];
+        private static readonly Random DrawRandom = new Random(Seed);
+        private static Random _updateRandom;
 
         [DllImport("__Internal")]
         private static extern void switch_gpu_stats(float[] output, int count);
+
+        [DllImport("__Internal")]
+        private static extern int switch_profiler_start();
+
+        [DllImport("__Internal")]
+        private static extern void switch_profiler_stop([MarshalAs(UnmanagedType.LPUTF8Str)] string path);
 
         public static bool Enabled => _enabled ??= Program.commandLine.Contains("-perftest") || Program.commandLine.Contains("-perfscan");
 
@@ -94,6 +102,17 @@ namespace DuckGame
                     hash = Mix(Mix(hash, duck.dead ? 1u : 0u), duck.holdObject == null ? 0u : (uint)duck.holdObject.GetType().Name.GetStableHash());
                 world += hash;
                 ++things;
+                if (_verifyAll)
+                    Console.WriteLine("THING " + _measured + " " + thing.GetType().Name + " " + thing.x.ToString("R", CultureInfo.InvariantCulture) + " " + thing.y.ToString("R", CultureInfo.InvariantCulture) + " " + hash.ToString("x8"));
+            }
+            if (_verifyAll)
+            {
+                lock (PerfTracingRandom.Callers)
+                {
+                    foreach (KeyValuePair<string, int> caller in PerfTracingRandom.Callers)
+                        Console.WriteLine("RAND " + _measured + " " + caller.Key + " " + caller.Value);
+                    PerfTracingRandom.Callers.Clear();
+                }
             }
             Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VERIFY {0} {1} world={2:x8} sound={3:x8} things={4} sounds={5}",
                 SceneName, _measured, world, _soundHash, things, _sounds));
@@ -130,6 +149,10 @@ namespace DuckGame
                     return;
                 Begin();
             }
+            // Sprite animations advance when drawn, so the simulation depends on how updates and draws
+            // interleave. Dropping the time still owed after this update gives every drawn frame exactly
+            // one update: a slow frame slows the game down instead of being caught up.
+            Program.SetAccumulatedElapsedTime(Program.main, TimeSpan.Zero);
             Step();
         }
 
@@ -140,12 +163,19 @@ namespace DuckGame
             double now = Now;
             CloseUpdate(now);
             _drawStart = now;
+            // Drawing takes random numbers too (flicker, shake). It gets its own generator, so the
+            // simulation doesn't depend on how many frames were drawn between two updates.
+            _updateRandom = Rando.generator;
+            Rando.generator = DrawRandom;
         }
 
         public static void DrawEnd()
         {
             if (!Enabled || _finished || _drawStart < 0)
                 return;
+            if (_updateRandom != null)
+                Rando.generator = _updateRandom;
+            _updateRandom = null;
             double drawMs = Now - _drawStart;
             _drawStart = -1;
             if (!Measuring)
@@ -197,6 +227,7 @@ namespace DuckGame
             _verify = Program.commandLine.Contains("-verify");
             if (_verify)
                 DevConsole.showFPS = false;
+            _verifyAll = Program.commandLine.Contains("-verifyall");
             _measureFrames = _scan ? 300 : 1800;
             for (int i = 0; i < Bots.Length; i++)
             {
@@ -218,7 +249,22 @@ namespace DuckGame
                 Scenes.Insert(0, new KeyValuePair<string, Func<Level>>("control", () => Stock("city01")));
                 Scenes.Insert(1, new KeyValuePair<string, Func<Level>>(PerfRoom.SceneName, PerfRoom.Create));
             }
+            // -perfscene a,b keeps only the named scenes.
+            string only = Argument("-perfscene");
+            if (only != null)
+            {
+                string[] names = only.Split(',');
+                Scenes.RemoveAll(scene => Array.IndexOf(names, scene.Key) < 0);
+            }
+            _profile = Program.commandLine.Contains("-perfprofile");
             NextScene();
+        }
+
+        private static string Argument(string name)
+        {
+            string[] parts = Program.commandLine.Split(' ');
+            int index = Array.IndexOf(parts, name);
+            return index >= 0 && index + 1 < parts.Length ? parts[index + 1] : null;
         }
 
         private static Level Stock(string name)
@@ -238,7 +284,10 @@ namespace DuckGame
         {
             while (++_scene < Scenes.Count)
             {
-                Rando.generator = new Random(Seed);
+                Rando.generator = Program.commandLine.Contains("-verifyall") ? new PerfTracingRandom(Seed) : new Random(Seed);
+                // A sprite animates on its first drawn frame or on its second depending on this flag's
+                // value when it was created; it flips every frame, so its phase is pinned here.
+                Graphics.frameFlipFlop = false;
                 _sceneFrames = _measured = _skip = _over = _rounds = _sounds = 0;
                 _soundHash = 2166136261u;
                 _pictureFrame = -1;
@@ -301,11 +350,16 @@ namespace DuckGame
                 _gen0 = GC.CollectionCount(0);
                 _gen1 = GC.CollectionCount(1);
                 _allocated = GC.GetTotalAllocatedBytes(false);
+                if (Program.commandLine.Contains("-perfalloc"))
+                    PerfAllocations.Start();
+                // -perfprofile: samples the main thread for the measured part of every scene.
+                if (_profile)
+                    _profile = _native && Directory.Exists("/switch/DuckGame") && switch_profiler_start() != 0;
             }
             if (SceneName == PerfRoom.SceneName)
                 PerfRoom.Tick(level);
             DriveBots(level);
-            if (_verify && Measuring && _measured % 60 == 0)
+            if (_verify && Measuring && (_measured % 60 == 0 || _verifyAll))
                 Verify(level);
             if (Measuring && ++_measured >= _measureFrames)
             {
@@ -332,6 +386,9 @@ namespace DuckGame
 
         private static void Report()
         {
+            PerfAllocations.Report(SceneName);
+            if (_profile)
+                switch_profiler_stop("/switch/DuckGame/profile-" + SceneName + ".txt");
             UpdateMs.Sort();
             DrawMs.Sort();
             double update = Mean(UpdateMs), draw = Mean(DrawMs);
@@ -536,6 +593,125 @@ namespace DuckGame
                 }
             }
             return best;
+        }
+    }
+}
+
+namespace DuckGame
+{
+    // -perfalloc (desktop runtime only): which types the measured part of a scene allocates, from the
+    // runtime's allocation tick events (one per ~100 KB).
+    public sealed class PerfAllocations : System.Diagnostics.Tracing.EventListener
+    {
+        private static PerfAllocations _instance;
+        private readonly System.Collections.Generic.Dictionary<string, long> _bytes = new System.Collections.Generic.Dictionary<string, long>();
+        private bool _collecting;
+
+        public static void Start()
+        {
+            _instance ??= new PerfAllocations();
+            lock (_instance._bytes)
+            {
+                _instance._bytes.Clear();
+                _instance._collecting = true;
+            }
+        }
+
+        public static void Report(string scene)
+        {
+            if (_instance == null)
+                return;
+            lock (_instance._bytes)
+            {
+                _instance._collecting = false;
+                var rows = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, long>>(_instance._bytes);
+                rows.Sort((a, b) => b.Value.CompareTo(a.Value));
+                for (int i = 0; i < rows.Count && i < 30; i++)
+                    System.Console.WriteLine("ALLOC " + scene + " " + (rows[i].Value / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " " + rows[i].Key);
+            }
+        }
+
+        protected override void OnEventSourceCreated(System.Diagnostics.Tracing.EventSource source)
+        {
+            if (source.Name == "Microsoft-Windows-DotNETRuntime")
+                EnableEvents(source, System.Diagnostics.Tracing.EventLevel.Verbose, (System.Diagnostics.Tracing.EventKeywords)1);
+        }
+
+        protected override void OnEventWritten(System.Diagnostics.Tracing.EventWrittenEventArgs data)
+        {
+            if (data.EventName == null || !data.EventName.StartsWith("GCAllocationTick") || data.Payload == null || data.PayloadNames == null)
+                return;
+            int type = data.PayloadNames.IndexOf("TypeName"), amount = data.PayloadNames.IndexOf("AllocationAmount64");
+            if (type < 0 || amount < 0)
+                return;
+            lock (_bytes)
+            {
+                if (!_collecting)
+                    return;
+                string name = (string)data.Payload[type];
+                _bytes.TryGetValue(name, out long total);
+                _bytes[name] = total + System.Convert.ToInt64(data.Payload[amount]);
+            }
+        }
+    }
+}
+
+namespace DuckGame
+{
+    // -verifyall: counts who takes random numbers each frame, to find what makes two runs diverge.
+    public sealed class PerfTracingRandom : Random
+    {
+        public static readonly System.Collections.Generic.SortedDictionary<string, int> Callers = new System.Collections.Generic.SortedDictionary<string, int>(StringComparer.Ordinal);
+        private static readonly int MainThread = Environment.CurrentManagedThreadId;
+
+        public PerfTracingRandom(int seed) : base(seed)
+        {
+        }
+
+        private static void Note()
+        {
+            var trace = new System.Diagnostics.StackTrace(2, false);
+            string name = "?";
+            for (int i = 0; i < trace.FrameCount; i++)
+            {
+                var method = trace.GetFrame(i).GetMethod();
+                string type = method?.DeclaringType?.Name;
+                if (type == null || type == nameof(Rando) || type == nameof(PerfTracingRandom) || type == nameof(Random))
+                    continue;
+                name = type + "." + method.Name;
+                break;
+            }
+            if (Environment.CurrentManagedThreadId != MainThread)
+                name = "OFFTHREAD:" + name;
+            lock (Callers)
+            {
+                Callers.TryGetValue(name, out int count);
+                Callers[name] = count + 1;
+            }
+        }
+
+        public override int Next()
+        {
+            Note();
+            return base.Next();
+        }
+
+        public override int Next(int maxValue)
+        {
+            Note();
+            return base.Next(maxValue);
+        }
+
+        public override int Next(int minValue, int maxValue)
+        {
+            Note();
+            return base.Next(minValue, maxValue);
+        }
+
+        public override double NextDouble()
+        {
+            Note();
+            return base.NextDouble();
         }
     }
 }
