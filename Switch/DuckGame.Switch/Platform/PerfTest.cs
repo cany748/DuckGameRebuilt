@@ -23,7 +23,11 @@ namespace DuckGame
         public static readonly List<KeyValuePair<string, Func<Level>>> Scenes = new List<KeyValuePair<string, Func<Level>>>();
 
         private static bool? _enabled;
-        private static bool _scan, _running, _finished, _native = true;
+        private static bool _scan, _running, _finished, _verify, _native = true;
+        private static uint _soundHash;
+        private static int[] _pixels;
+        private static int _pictureFrame;
+        private static int _sounds;
         private static int _titleFrames, _scene = -1, _sceneFrames, _measured, _measureFrames, _skip, _rounds;
         private static Level _lastLevel;
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -46,6 +50,70 @@ namespace DuckGame
         public static string SceneName => _scene >= 0 && _scene < Scenes.Count ? Scenes[_scene].Key : "";
 
         public static int MeasuredFrame => _measured;
+
+        public static void SoundStarted(string name, float volume, float pitch)
+        {
+            if (!_verify || !Measuring)
+                return;
+            _soundHash = Mix(Mix(Mix(_soundHash, (uint)name.GetStableHash()), Bits(volume)), Bits(pitch));
+            ++_sounds;
+        }
+
+        private static uint Bits(float value) => (uint)BitConverter.SingleToInt32Bits(value);
+
+        private static uint Mix(uint hash, uint value)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                hash = (hash ^ (value & 0xff)) * 16777619u;
+                value >>= 8;
+            }
+            return hash;
+        }
+
+        private static int GetStableHash(this string text)
+        {
+            uint hash = 2166136261u;
+            foreach (char c in text)
+                hash = (hash ^ c) * 16777619u;
+            return (int)hash;
+        }
+
+        // Order-independent: the per-thing hashes are summed, so the container's iteration order
+        // doesn't matter.
+        private static void Verify(Level level)
+        {
+            uint world = 0;
+            int things = 0;
+            foreach (Thing thing in level.things)
+            {
+                uint hash = (uint)thing.GetType().Name.GetStableHash();
+                hash = Mix(Mix(Mix(hash, Bits(thing.x)), Bits(thing.y)), Bits(thing.angle));
+                hash = Mix(Mix(hash, Bits(thing.hSpeed)), Bits(thing.vSpeed));
+                if (thing is Duck duck)
+                    hash = Mix(Mix(hash, duck.dead ? 1u : 0u), duck.holdObject == null ? 0u : (uint)duck.holdObject.GetType().Name.GetStableHash());
+                world += hash;
+                ++things;
+            }
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VERIFY {0} {1} world={2:x8} sound={3:x8} things={4} sounds={5}",
+                SceneName, _measured, world, _soundHash, things, _sounds));
+        }
+
+        // The finished backbuffer of two fixed frames per scene, so a change that only affects drawing shows
+        // up as well.
+        private static void VerifyPicture()
+        {
+            _pictureFrame = _measured;
+            Microsoft.Xna.Framework.Graphics.GraphicsDevice device = Graphics.device;
+            int width = device.PresentationParameters.BackBufferWidth, height = device.PresentationParameters.BackBufferHeight;
+            if (_pixels == null || _pixels.Length != width * height)
+                _pixels = new int[width * height];
+            device.GetBackBufferData(_pixels);
+            uint hash = 2166136261u;
+            foreach (int pixel in _pixels)
+                hash = (hash ^ (uint)pixel) * 16777619u;
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VERIFY {0} {1} picture={2:x8}", SceneName, _measured, hash));
+        }
 
         private static double Now => Clock.Elapsed.TotalMilliseconds;
 
@@ -83,6 +151,8 @@ namespace DuckGame
             if (!Measuring)
                 return;
             DrawMs.Add(drawMs);
+            if (_verify && (_measured == 600 || _measured == 1500) && _pictureFrame != _measured)
+                VerifyPicture();
             if (_lastUpdateMs + drawMs > FrameBudgetMs)
                 ++_over;
             ReadGl();
@@ -124,6 +194,9 @@ namespace DuckGame
         {
             _running = true;
             _scan = Program.commandLine.Contains("-perfscan");
+            _verify = Program.commandLine.Contains("-verify");
+            if (_verify)
+                DevConsole.showFPS = false;
             _measureFrames = _scan ? 300 : 1800;
             for (int i = 0; i < Bots.Length; i++)
             {
@@ -166,7 +239,9 @@ namespace DuckGame
             while (++_scene < Scenes.Count)
             {
                 Rando.generator = new Random(Seed);
-                _sceneFrames = _measured = _skip = _over = _rounds = 0;
+                _sceneFrames = _measured = _skip = _over = _rounds = _sounds = 0;
+                _soundHash = 2166136261u;
+                _pictureFrame = -1;
                 _glDraws = _glUploads = _glTargets = _glFrames = 0;
                 UpdateMs.Clear();
                 DrawMs.Clear();
@@ -230,6 +305,8 @@ namespace DuckGame
             if (SceneName == PerfRoom.SceneName)
                 PerfRoom.Tick(level);
             DriveBots(level);
+            if (_verify && Measuring && _measured % 60 == 0)
+                Verify(level);
             if (Measuring && ++_measured >= _measureFrames)
             {
                 Report();

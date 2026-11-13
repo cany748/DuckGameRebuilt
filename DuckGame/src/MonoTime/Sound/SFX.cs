@@ -213,6 +213,9 @@ namespace DuckGame
 
         public static Sound Play(string sound, float vol = 1f, float pitch = 0f, float pan = 0f, bool looped = false)
         {
+#if SWITCH
+            PerfTest.SoundStarted(sound, vol, pitch);
+#endif
             if (!enabled || skip)
                 return new InvalidSound(sound, vol, pitch, pan, looped);
             Sound sound1 = _playedThisFrame.FirstOrDefault(x => x.name == sound);
