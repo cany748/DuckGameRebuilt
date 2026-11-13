@@ -91,3 +91,23 @@ More arguments for the same place:
 - `-levscan` prints a `LEVSCAN` line for every custom level with the mods it needs and the objects this build can't create.
 
 Frames longer than 25 ms are appended to `spikes.log` next to the nro whenever the level changes.
+
+## Performance test
+
+`-perftest` (same place, `[game] args`) plays a fixed list of scenes with eight bot ducks and a fixed random seed, then prints one `PERF` line per scene and `PERF done`:
+
+```
+PERF effects frames=1799 rounds=1 upd=mean/p50/p95/p99/max drw=... sum=mean/p95 over16=n gl=draws/uploads/targets gc0=n gc1=n alloc=MB
+```
+
+`upd` and `drw` are milliseconds per update and per drawn frame, `sum` their total, `over16` the frames above 16.7 ms, `gl` FNA3D calls per frame. Scenes: `control` (a stock level), `effects` (a stock level flooded with guns, grenades, fire, fluids, crates and particle bursts on a schedule, ducks respawn). Rounds restart on the same level; the countdown before a round is not measured.
+
+While it runs, every drawn frame gets exactly one update and drawing uses its own random generator, so two runs of the same build play identically.
+
+- `-verify` adds `VERIFY` lines: a hash of all things in the level and of every sound started, every 60 frames, and a hash of the backbuffer at frames 600 and 1500. A change that keeps these lines identical did not change gameplay, sound or picture.
+- `-perfscan` measures every custom level for 300 frames instead, to find the heavy ones.
+- `-perfscene a,b` runs only the named scenes.
+- `-perfprofile` samples the main thread during the measured part and writes `profile-<scene>.txt` next to the nro.
+- `-perfalloc` (desktop runtime) prints `ALLOC` lines: megabytes allocated per type.
+
+Results are tracked in `docs/perf/baseline.md`.
