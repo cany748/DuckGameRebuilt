@@ -269,12 +269,37 @@ namespace DuckGame
         //    }
         //}
 
+        // A frame draws thousands of sprites; their items and the per-depth lists are reused instead of
+        // being left to the garbage collector. Items kept by a sprite, and items a material may still
+        // look at after the batch, stay out of the pool.
+        private readonly Stack<MTSpriteBatchItem> _freeItems = new Stack<MTSpriteBatchItem>(1024);
+        private readonly Stack<List<MTSpriteBatchItem>> _freeDepthLists = new Stack<List<MTSpriteBatchItem>>(64);
+
+        private List<MTSpriteBatchItem> NewDepthList() => _freeDepthLists.Count > 0 ? _freeDepthLists.Pop() : new List<MTSpriteBatchItem>();
+
+        private void RecycleBatchItems()
+        {
+            for (int i = 0; i < keys.Count; i++)
+            {
+                List<MTSpriteBatchItem> items = _batchItemListv2[keys[i]];
+                for (int j = 0; j < items.Count; j++)
+                {
+                    MTSpriteBatchItem item = items[j];
+                    if (item.retained || item.Material != null)
+                        continue;
+                    item.Reset();
+                    _freeItems.Push(item);
+                }
+                items.Clear();
+                _freeDepthLists.Push(items);
+            }
+        }
+
         public MTSpriteBatchItem CreateBatchItemDepth(float Depth)
         {
             batchlistCount++;
 
-            // Fetch item from pool
-            MTSpriteBatchItem batchItem = new MTSpriteBatchItem();
+            MTSpriteBatchItem batchItem = _freeItems.Count > 0 ? _freeItems.Pop() : new MTSpriteBatchItem();
 
             LastSpriteBatchItem = batchItem;
 
@@ -283,7 +308,9 @@ namespace DuckGame
             if (!_batchItemListv2.TryGetValue(modifiedDepth, out List<MTSpriteBatchItem> LbatchItemList))
             {
                 keys.Add(modifiedDepth);
-                _batchItemListv2[modifiedDepth] = new List<MTSpriteBatchItem> { batchItem };
+                LbatchItemList = NewDepthList();
+                LbatchItemList.Add(batchItem);
+                _batchItemListv2[modifiedDepth] = LbatchItemList;
             }
             else
             {
@@ -315,6 +342,7 @@ namespace DuckGame
             {
                 batchItem = new MTSpriteBatchItem();
             }
+            batchItem.retained = true;
             return batchItem;
         }
 
@@ -325,11 +353,14 @@ namespace DuckGame
             //    DevConsole.Log("uhh");
             //}
             batchlistCount += 1;
+            item.retained = true;
             float ndepth = item.Depth * depthmod;
             if (!_batchItemListv2.TryGetValue(ndepth, out List<MTSpriteBatchItem> LbatchItemList))
             {
                 keys.Add(ndepth);
-                _batchItemListv2.Add(ndepth, new List<MTSpriteBatchItem> { item });
+                LbatchItemList = NewDepthList();
+                LbatchItemList.Add(item);
+                _batchItemListv2.Add(ndepth, LbatchItemList);
                 return;
             }
             LbatchItemList.Add(item);
@@ -721,6 +752,7 @@ namespace DuckGame
             //    flushvertexarray(start, end);
             //}
 
+            RecycleBatchItems();
             batchlistCount = 0;
             _batchItemListv2.Clear();
             //foreach(float key in keys)

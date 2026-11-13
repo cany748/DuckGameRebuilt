@@ -27,6 +27,29 @@ namespace DuckGame
         private float prevsin;
         private float prevcos;
 
+        // Set once something outside the batcher keeps the item past the frame (a sprite that caches its
+        // quad); such an item is never recycled.
+        internal bool retained;
+
+        // Back to the state of a new item, for reuse by the batcher.
+        internal void Reset()
+        {
+            usingspriteatlas = false;
+            NormalTexture = null;
+            Offsets = Vec2.Zero;
+            DepthIndex = 0f;
+            MetaData = null;
+            inPool = false;
+            Texture = null;
+            Material = null;
+            Depth = 0f;
+            vertexTL = default;
+            vertexTR = default;
+            vertexBL = default;
+            vertexBR = default;
+            prevx = prevy = prevdx = prevdy = prevw = prevh = prevsin = prevcos = 0f;
+        }
+
         public MTSpriteBatchItem()
         {
             vertexTL = new VertexPositionColorTexture();
