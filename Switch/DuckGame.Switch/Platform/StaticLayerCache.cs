@@ -15,7 +15,10 @@ namespace DuckGame
     public static class StaticLayerCache
     {
         private const int MinimumStaticThings = 32;
-        private const int MaximumTargetSize = 4096;
+        // Wide levels (a long corridor is 4000+ by 400) fit by side; the area keeps the memory of the
+        // target within that of a 4096x4096 one.
+        private const int MaximumTargetSide = 8192;
+        private const int MaximumTargetPixels = 4096 * 4096;
         private const float Margin = 16f;
 
         private sealed class Entry
@@ -97,7 +100,7 @@ namespace DuckGame
             top = (float)Math.Floor(top - Margin);
             int width = (int)Math.Ceiling(right + Margin - left);
             int height = (int)Math.Ceiling(bottom + Margin - top);
-            if (width > MaximumTargetSize || height > MaximumTargetSize)
+            if (width > MaximumTargetSide || height > MaximumTargetSide || (long)width * height > MaximumTargetPixels)
                 return;
 
             if (entry.target == null || entry.target.width != width || entry.target.height != height)
