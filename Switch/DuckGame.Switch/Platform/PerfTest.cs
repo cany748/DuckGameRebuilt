@@ -200,6 +200,23 @@ namespace DuckGame
             foreach (int pixel in _pixels)
                 hash = (hash ^ (uint)pixel) * 16777619u;
             Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VERIFY {0} {1} picture={2:x8}", SceneName, _measured, hash));
+            string dump = Environment.GetEnvironmentVariable("PERF_PICTURE_DIR");
+            if (dump != null)
+            {
+                using (var file = File.Create(Path.Combine(dump, SceneName + "-" + _measured + ".ppm")))
+                {
+                    byte[] header = System.Text.Encoding.ASCII.GetBytes("P6\n" + width + " " + height + "\n255\n");
+                    file.Write(header, 0, header.Length);
+                    byte[] rgb = new byte[width * height * 3];
+                    for (int i = 0; i < width * height; i++)
+                    {
+                        rgb[i * 3] = (byte)_pixels[i];
+                        rgb[i * 3 + 1] = (byte)(_pixels[i] >> 8);
+                        rgb[i * 3 + 2] = (byte)(_pixels[i] >> 16);
+                    }
+                    file.Write(rgb, 0, rgb.Length);
+                }
+            }
         }
 
         private static double Now => Clock.Elapsed.TotalMilliseconds;
