@@ -994,6 +994,52 @@ namespace DuckGame
         /// </summary>
         /// <param name="start">Start index of vertices to draw. Not used except to compute the count of vertices to draw.</param>
         /// <param name="end">End index of vertices to draw. Not used except to compute the count of vertices to draw.</param>
+#if SWITCH
+        // DrawUserIndexedPrimitives uploads the (never changing) quad indices with every batch and orphans
+        // its vertex buffer each time, which the console's GL driver pays for in allocations and syncs.
+        // The quads go into a ring buffer instead (appending without overwriting what the GPU may still
+        // read) and the indices are uploaded once. Same vertices, same order, same states.
+        private const int MaxQuadsPerFlush = 5461;
+        private const int RingVertices = MaxQuadsPerFlush * 4 * 4;
+        private static DynamicVertexBuffer _ringVertices;
+        private static IndexBuffer _quadIndices;
+        private static int _ringOffset;
+
+        private void FlushVertexArray(int start, int end)
+        {
+            if (start == end)
+                return;
+            int numVertices = end - start;
+            if (_quadIndices == null || _quadIndices.IsDisposed || _quadIndices.GraphicsDevice != _device)
+            {
+                short[] indices = new short[MaxQuadsPerFlush * 6];
+                for (int quad = 0; quad < MaxQuadsPerFlush; ++quad)
+                {
+                    indices[quad * 6] = (short)(quad * 4);
+                    indices[quad * 6 + 1] = (short)(quad * 4 + 1);
+                    indices[quad * 6 + 2] = (short)(quad * 4 + 2);
+                    indices[quad * 6 + 3] = (short)(quad * 4 + 1);
+                    indices[quad * 6 + 4] = (short)(quad * 4 + 3);
+                    indices[quad * 6 + 5] = (short)(quad * 4 + 2);
+                }
+                _quadIndices = new IndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
+                _quadIndices.SetData(indices);
+                _ringVertices = new DynamicVertexBuffer(_device, VertexPositionColorTexture.VertexDeclaration, RingVertices, BufferUsage.WriteOnly);
+                _ringOffset = 0;
+            }
+            SetDataOptions options = SetDataOptions.NoOverwrite;
+            if (_ringOffset + numVertices > RingVertices)
+            {
+                _ringOffset = 0;
+                options = SetDataOptions.Discard;
+            }
+            _ringVertices.SetData(_ringOffset * VertexPositionColorTexture.VertexDeclaration.VertexStride, _vertexArray, 0, numVertices, VertexPositionColorTexture.VertexDeclaration.VertexStride, options);
+            _device.SetVertexBuffer(_ringVertices);
+            _device.Indices = _quadIndices;
+            _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, _ringOffset, 0, numVertices, 0, numVertices / 4 * 2);
+            _ringOffset += numVertices;
+        }
+#else
         private void FlushVertexArray(int start, int end)
         {
             if (start == end)
@@ -1001,6 +1047,7 @@ namespace DuckGame
             int numVertices = end - start;
             _device.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, _vertexArray, 0, numVertices, _index, 0, numVertices / 4 * 2, VertexPositionColorTexture.VertexDeclaration);
         }
+#endif
 
         private void FlushSimpleVertexArray(int start, int end)
         {
