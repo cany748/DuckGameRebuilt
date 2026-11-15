@@ -17,6 +17,11 @@ GEN="$HERE/build/gen"
 AOT="$MONO_NX_ROOT/artifacts/bin/mono/linux.x64.Debug/cross/linux-x64/libnx-arm64/mono-aot-cross"
 # Extra code generation optimizations (MONO_AOT_OPT, e.g. "-O=all,-unsafe"); empty = Mono's defaults.
 MONO_OPT=${MONO_AOT_OPT:-}
+# Settings for the game assembly only (DuckGame.dll), where the frame time is spent:
+# MONO_AOT_GAME_OPT adds code generation optimizations, MONO_AOT_GAME_INLINELIMIT raises the IL size
+# up to which callees are inlined (Mono's default is 20 bytes).
+GAME_OPT=${MONO_AOT_GAME_OPT:-}
+GAME_INLINELIMIT=${MONO_AOT_GAME_INLINELIMIT:-}
 # DGR is large and generic-heavy; the defaults (1000s) run out at runtime.
 AOT_OPTS="full,interp,static,direct-icalls,nodebug,ntrampolines=40000,ngsharedvt-trampolines=8192,nimt-trampolines=8192,tool-prefix=aarch64-none-elf-"
 
@@ -38,11 +43,22 @@ while read -r src; do
 	file=$(basename "$src")
 	name="${file%.*}"
 	obj="$OUT/$name.o"
+	stamp="$OUT/$name.opts"
+	want="$MONO_OPT|$([ "$name" = DuckGame ] && echo "$GAME_OPT|$GAME_INLINELIMIT")"
+	[ "$(cat "$stamp" 2>/dev/null)" = "$want" ] || rm -f "$obj"
+	echo "$want" > "$stamp"
 	if [ "$obj" -nt "$src" ]; then
 		echo "aot: $name up to date"
 	else
 		echo "aot: $name"
-		if ! MONO_PATH="$INPUT" "$AOT" $MONO_OPT --path="$INPUT" --aot="$AOT_OPTS,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
+		opt=$MONO_OPT
+		# An empty MONO_INLINELIMIT would read as 0 and turn inlining off, so it is only set when given.
+		limit=()
+		if [ "$name" = DuckGame ]; then
+			opt="$opt $GAME_OPT"
+			[ -n "$GAME_INLINELIMIT" ] && limit=(MONO_INLINELIMIT="$GAME_INLINELIMIT")
+		fi
+		if ! env "${limit[@]}" MONO_PATH="$INPUT" "$AOT" $opt --path="$INPUT" --aot="$AOT_OPTS,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
 			# The (debug) cross compiler fails on a few assemblies; they stay interpreted.
 			echo "aot: FAILED $name, skipped (see $OUT/$name.log)" | tee -a "$OUT/failed.txt"
 			rm -f "$obj"

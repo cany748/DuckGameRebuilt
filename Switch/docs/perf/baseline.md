@@ -26,15 +26,21 @@ Optimizations so far:
 
 ## Ryujinx (THROTTLE=40, cgroup v2 thread quotas)
 
-World and sound hashes equal the x64 ones, so one reference serves both targets.
+World and sound hashes equal the x64 ones, so one reference serves both targets. The first run after
+a new build is discarded (cold translation cache: update about 5x slower); the numbers are second runs.
 
-| scene | build | upd ms | drw ms | sum mean / p95 | over 16.7 ms | GL draws per frame | gen0 | MB |
-|---|---|---|---|---|---|---|---|---|
-| control | first three optimizations | 3.68 | 10.75 | 14.43 / 22.83 | 168 | 6.1 | 3 | 168 |
-| effects | first three optimizations | 14.92 | 25.43 | 40.36 / 57.39 | 1780 | 42.9 | 13 | 420 |
+`work` is update + draw without the wait for vsync inside the first clear of the frame; the 2x target
+is `work` mean and p95 at most half of the baseline.
 
-The baseline build (test code without the optimizations) has not been run on this target yet, and the
-custom maps have not been scanned.
+| scene | build | upd ms | drw ms | work mean / p95 | GL ms draw/upload/swap/clear | gen0 | MB |
+|---|---|---|---|---|---|---|---|
+| control | baseline (`b1e90f15`) | 3.63 | 11.13 | 6.88 / 13.74 | 0.38/0.12/1.64/7.88 | 6 | 305 |
+| control | `bcdb6e7a` (6 perf commits) | 3.77 | 11.48 | 6.71 / 12.44 | 0.40/0.11/1.23/8.54 | 0 | 37 |
+| effects | baseline (`b1e90f15`) | 14.83 | 25.23 | 37.00 / 49.20 | 1.42/2.87/2.41/3.05 | 33 | 1047 |
+| effects | `bcdb6e7a` (6 perf commits) | 14.54 | 21.22 | 32.79 / 43.35 | 1.43/2.80/2.43/2.97 | 2 | 70 |
+
+So far: effects x0.89, control x0.98. Allocations are down 15x, but garbage was not where the frame
+time goes. The custom maps have not been scanned yet.
 
 Profile of `effects` (main thread, 28201 samples, leaf functions):
 
