@@ -343,7 +343,16 @@ namespace DuckGame
                 }
             }
         }
-        public Dictionary<Vec2, Dictionary<int, List<Thing>>> Buckets = new Dictionary<Vec2, Dictionary<int, List<Thing>>>();
+        // Cell coordinates are whole numbers. Vec2's own hash (x.GetHashCode() + y.GetHashCode()) puts every
+        // cell of a diagonal into the same hash bucket, so lookups walked long chains.
+        private sealed class CellComparer : IEqualityComparer<Vec2>
+        {
+            public bool Equals(Vec2 a, Vec2 b) => a.x == b.x && a.y == b.y;
+
+            public int GetHashCode(Vec2 cell) => unchecked((int)cell.x * 73856093 ^ (int)cell.y * 19349663);
+        }
+
+        public Dictionary<Vec2, Dictionary<int, List<Thing>>> Buckets = new Dictionary<Vec2, Dictionary<int, List<Thing>>>(new CellComparer());
         
         public static float Leniancy = 9f;
         public static int LineLeniancy = 0;
