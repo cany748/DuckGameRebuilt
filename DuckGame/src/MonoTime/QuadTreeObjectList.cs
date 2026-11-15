@@ -573,6 +573,8 @@ namespace DuckGame
         }
         // CollisionRectAll for a caller that consumes everything at once: the same things in the same
         // order, written into a list instead of coming through an iterator and a temporary cell array.
+        // Only the things still in the level that overlap p1..p2 are kept (Level.CollisionRectAllDan's
+        // test, done during the walk).
         public void CollisionRectAll(Vec2 p1, Vec2 p2, Type t, List<Thing> into)
         {
             float width = p1.x - p2.x;
@@ -597,7 +599,11 @@ namespace DuckGame
                     cell.TryGetValue(typekey, out List<Thing> cellThings))
                 {
                     for (int i = 0; i < cellThings.Count; i++)
-                        into.Add(cellThings[i]);
+                    {
+                        Thing item = cellThings[i];
+                        if (!item.removeFromLevel && Collision.Rect(p1, p2, item))
+                            into.Add(item);
+                    }
                 }
                 return;
             }
@@ -619,7 +625,8 @@ namespace DuckGame
                             if (item._queryId != queryId)
                             {
                                 item._queryId = queryId;
-                                into.Add(item);
+                                if (!item.removeFromLevel && Collision.Rect(p1, p2, item))
+                                    into.Add(item);
                             }
                         }
                     }

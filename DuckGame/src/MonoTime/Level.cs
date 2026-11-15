@@ -1928,13 +1928,7 @@ namespace DuckGame
             candidates.Clear();
             things.CollisionRectAll(p1, p2, typeof(T), candidates);
             for (int i = 0; i < candidates.Count; i++)
-            {
-                Thing thing = candidates[i];
-                if (!thing.removeFromLevel && Collision.Rect(p1, p2, thing))
-                {
-                    outList1.Add((T)(object)thing);
-                }
-            }
+                outList1.Add((T)(object)candidates[i]);
             candidates.Clear();
             //bool flag2 = !t.removeFromLevel && Collision.Rect(p1, p2, t);
             //System.Type key = typeof(T);
