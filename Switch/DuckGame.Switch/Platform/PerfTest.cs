@@ -61,6 +61,70 @@ namespace DuckGame
 
         public static int MeasuredFrame => _measured;
 
+        // Music of each scene, fixed so runs compare: the effects scene plays a Genesis FM (VGM) track,
+        // synthesized while the game runs, the others an Ogg track.
+        private const string VgmTrack = "InGame/barrysboots";
+        private const string OggTrack = "InGame/DucksBeCalm";
+        private const int MusicHashBytes = 44100 * 4 * 20;
+
+        public static string MusicOverride => _running && !_finished ? (SceneName == PerfRoom.SceneName ? VgmTrack : OggTrack) : null;
+
+        public static bool NoMusicWorker => Enabled && Program.commandLine.Contains("-novgmworker");
+
+        private static uint _musicHash;
+        private static int _musicBytes;
+
+        // -verify: the first 20 seconds of synthesized music of a scene, in the order it was queued.
+        public static void MusicSubmitted(byte[] data, int count)
+        {
+            if (!_verify || _musicBytes >= MusicHashBytes)
+                return;
+            int take = Math.Min(count, MusicHashBytes - _musicBytes);
+            uint hash = _musicHash;
+            for (int i = 0; i < take; i++)
+                hash = (hash ^ data[i]) * 16777619u;
+            _musicHash = hash;
+            _musicBytes += take;
+            if (_musicBytes == MusicHashBytes)
+                Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VERIFY {0} music={1:x8}", SceneName, _musicHash));
+        }
+
+        // -vgmbench: synthesis cost of every Genesis FM track, 20 seconds each, and a hash of its output.
+        private static void VgmBench()
+        {
+            string root = Content.path + "/Audio/Music";
+            string[] files = Directory.GetFiles(root, "*.vg*", SearchOption.AllDirectories);
+            Array.Sort(files, StringComparer.Ordinal);
+            foreach (string file in files)
+            {
+                try
+                {
+                    VGMSong song = new VGMSong(file);
+                    uint hash = 2166136261u;
+                    int bytes = 0;
+                    Stopwatch watch = Stopwatch.StartNew();
+                    while (bytes < MusicHashBytes)
+                    {
+                        int half = song.Synthesize(true);
+                        if (half <= 0)
+                            break;
+                        byte[] data = song.SynthesizedBuffer;
+                        for (int i = 0; i < half * 2; i++)
+                            hash = (hash ^ data[i]) * 16777619u;
+                        bytes += half * 2;
+                    }
+                    double ms = watch.Elapsed.TotalMilliseconds;
+                    song.Terminate();
+                    Console.WriteLine(string.Format(CultureInfo.InvariantCulture, "VGMBENCH {0} {1:0.0} ms per audio second, hash {2:x8}",
+                        file.Substring(root.Length + 1), ms / (bytes / (44100.0 * 4)), hash));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("VGMBENCH " + file + " failed " + e.GetType().Name);
+                }
+            }
+        }
+
         public static void SoundStarted(string name, float volume, float pitch)
         {
             if (!_verify || !Measuring)
@@ -237,6 +301,8 @@ namespace DuckGame
 
         private static void Begin()
         {
+            if (Program.commandLine.Contains("-vgmbench"))
+                VgmBench();
             _running = true;
             _scan = Program.commandLine.Contains("-perfscan");
             _verify = Program.commandLine.Contains("-verify");
@@ -305,6 +371,8 @@ namespace DuckGame
                 Graphics.frameFlipFlop = false;
                 _sceneFrames = _measured = _skip = _over = _rounds = _sounds = 0;
                 _soundHash = 2166136261u;
+                _musicHash = 2166136261u;
+                _musicBytes = 0;
                 _pictureFrame = -1;
                 _glDraws = _glUploads = _glTargets = _glFrames = 0;
                 _glDrawMs = _glUploadMs = _glSwapMs = _glClearMs = 0;

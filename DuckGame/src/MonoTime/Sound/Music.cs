@@ -103,6 +103,10 @@ namespace DuckGame
 
         public static string RandomTrack(string folder, string ignore = "")
         {
+#if SWITCH
+            if (PerfTest.MusicOverride != null)
+                return PerfTest.MusicOverride;
+#endif
             if (!DGRSettings.LoaderMusic) return "";
 
             if (DevConsole.rhythmMode)
