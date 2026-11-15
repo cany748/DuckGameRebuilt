@@ -70,3 +70,32 @@ Profile of `effects` (main thread, 28201 samples, leaf functions):
 - about 10% in the collision grid (`Dictionary<Vec2, ...>.FindValue`, `GetThings` iterators,
   `CollisionRectAllDan`);
 - the rest is spread thin; no other single entry is above 2%.
+
+### Workshop maps
+
+`-perfscan` over the 98 workshop maps (300 frames each) picked the five heaviest; they are scenes
+`heavy1`..`heavy5` (Molten Gun Arena, Egg Corridor, minebeta2, de_dust2, Second). Two kinds: update-bound
+(ropes and ragdolls run rectangle collision queries: 15% of the frame) and draw-call-bound (Egg Corridor
+was wider than the static tile cache allowed, 213 batches a frame).
+
+| scene | before (heavy-a) | `ring` (current) |
+|---|---|---|
+| effects (VGM music) | 92.0 without the music worker, 34.4 with it | 30.3 |
+| heavy1 Molten Gun Arena | 37.4 | 32.3 |
+| heavy2 Egg Corridor | 31.5 | 10.4 |
+| heavy3 minebeta2 | 26.9 | 24.3 |
+| heavy4 de_dust2 | 22.4 | 15.3 |
+| heavy5 Second | 24.2 | 21.6 |
+| control | 6.8 | 6.4 |
+
+`work` mean in ms, emulator, second runs. Since then:
+
+- the static tile cache also covers wide levels (same memory budget, 8192 per side); the user accepted
+  that it is not bit-exact (one-pixel seams at tile edges, 0.1–1% of the pixels of a frame);
+- collision cells are hashed by their integer coordinates;
+- rectangle queries test candidates while walking the cells;
+- sprite batches are drawn from a vertex ring buffer with a static index buffer, instead of
+  `DrawUserIndexedPrimitives` uploading indices and orphaning a buffer per batch (GL upload time per
+  frame 2.8 -> 0.9 ms in `effects`).
+
+World and sound hashes stay equal to the x64 reference for every scene.
