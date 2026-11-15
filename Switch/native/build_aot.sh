@@ -44,7 +44,10 @@ while read -r src; do
 	name="${file%.*}"
 	obj="$OUT/$name.o"
 	stamp="$OUT/$name.opts"
-	want="$MONO_OPT|$([ "$name" = DuckGame ] && echo "$GAME_OPT|$GAME_INLINELIMIT")"
+	want="$MONO_OPT|"
+	if [ "$name" = DuckGame ]; then
+		want="$want$GAME_OPT|$GAME_INLINELIMIT"
+	fi
 	[ "$(cat "$stamp" 2>/dev/null)" = "$want" ] || rm -f "$obj"
 	echo "$want" > "$stamp"
 	if [ "$obj" -nt "$src" ]; then
