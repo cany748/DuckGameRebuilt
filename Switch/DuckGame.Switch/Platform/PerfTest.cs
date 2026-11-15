@@ -20,6 +20,8 @@ namespace DuckGame
         private const int RestartSkipFrames = 30;
         private const double FrameBudgetMs = 1000.0 / 60;
 
+        private static readonly string[] HeavyMaps = { "Molten Gun Arena", "Egg Corridor", "minebeta2", "de_dust2", "Second" };
+
         public static readonly List<KeyValuePair<string, Func<Level>>> Scenes = new List<KeyValuePair<string, Func<Level>>>();
 
         private static bool? _enabled;
@@ -329,6 +331,13 @@ namespace DuckGame
             {
                 Scenes.Insert(0, new KeyValuePair<string, Func<Level>>("control", () => Stock("city01")));
                 Scenes.Insert(1, new KeyValuePair<string, Func<Level>>(PerfRoom.SceneName, PerfRoom.Create));
+                // The heaviest workshop maps of a -perfscan run on the emulator (2026-11-15): update-bound
+                // ones and ones that draw hundreds of batches.
+                for (int i = 0; i < HeavyMaps.Length; i++)
+                {
+                    string map = HeavyMaps[i];
+                    Scenes.Add(new KeyValuePair<string, Func<Level>>("heavy" + (i + 1), () => Custom("Workshop/" + map + ".lev")));
+                }
             }
             // -perfscene a,b keeps only the named scenes.
             string only = Argument("-perfscene");
