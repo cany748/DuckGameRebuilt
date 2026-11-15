@@ -38,6 +38,8 @@ namespace DuckGame
         private static readonly float[] Gpu = new float[12];
         private static double _glDraws, _glUploads, _glTargets;
         private static int _glFrames;
+        private static double _glDrawMs, _glUploadMs, _glSwapMs, _glClearMs, _frameMs, _previousFrameMs = -1;
+        private static readonly List<double> WorkMs = new List<double>();
         private static readonly PerfBot[] Bots = new PerfBot[8];
         private static readonly Random DrawRandom = new Random(Seed);
         private static Random _updateRandom;
@@ -181,6 +183,7 @@ namespace DuckGame
             if (!Measuring)
                 return;
             DrawMs.Add(drawMs);
+            _frameMs = _lastUpdateMs + drawMs;
             if (_verify && (_measured == 600 || _measured == 1500) && _pictureFrame != _measured)
                 VerifyPicture();
             if (_lastUpdateMs + drawMs > FrameBudgetMs)
@@ -201,14 +204,26 @@ namespace DuckGame
         private static void ReadGl()
         {
             if (!_native)
+            {
+                WorkMs.Add(_frameMs);
                 return;
+            }
             try
             {
+                // The counters are those of the previous frame. Its first clear waited for vsync, which
+                // is idle time inside Draw(): work is what remains.
                 switch_gpu_stats(Gpu, Gpu.Length);
                 _glDraws += Gpu[0];
                 _glUploads += Gpu[2];
                 _glTargets += Gpu[5];
+                _glDrawMs += Gpu[1];
+                _glUploadMs += Gpu[3];
+                _glSwapMs += Gpu[6];
+                _glClearMs += Gpu[7];
                 ++_glFrames;
+                if (_previousFrameMs >= 0)
+                    WorkMs.Add(Math.Max(0, _previousFrameMs - Gpu[7]));
+                _previousFrameMs = _frameMs;
             }
             catch (EntryPointNotFoundException)
             {
@@ -292,6 +307,9 @@ namespace DuckGame
                 _soundHash = 2166136261u;
                 _pictureFrame = -1;
                 _glDraws = _glUploads = _glTargets = _glFrames = 0;
+                _glDrawMs = _glUploadMs = _glSwapMs = _glClearMs = 0;
+                _previousFrameMs = -1;
+                WorkMs.Clear();
                 UpdateMs.Clear();
                 DrawMs.Clear();
                 foreach (PerfBot bot in Bots)
@@ -391,17 +409,20 @@ namespace DuckGame
                 switch_profiler_stop("/switch/DuckGame/profile-" + SceneName + ".txt");
             UpdateMs.Sort();
             DrawMs.Sort();
+            WorkMs.Sort();
             double update = Mean(UpdateMs), draw = Mean(DrawMs);
             int frames = Math.Max(_glFrames, 1);
             Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0}",
+                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0} work={20:0.00}/{21:0.00} glms={22}",
                 SceneName, UpdateMs.Count,
                 update, Percentile(UpdateMs, 0.5), Percentile(UpdateMs, 0.95), Percentile(UpdateMs, 0.99), Percentile(UpdateMs, 1),
                 draw, Percentile(DrawMs, 0.5), Percentile(DrawMs, 0.95), Percentile(DrawMs, 0.99), Percentile(DrawMs, 1),
                 update + draw, Percentile(UpdateMs, 0.95) + Percentile(DrawMs, 0.95), _over,
                 _native && _glFrames > 0 ? string.Format(CultureInfo.InvariantCulture, "{0:0.0}/{1:0.0}/{2:0.0}", _glDraws / frames, _glUploads / frames, _glTargets / frames) : "n/a",
                 GC.CollectionCount(0) - _gen0, GC.CollectionCount(1) - _gen1,
-                (GC.GetTotalAllocatedBytes(false) - _allocated) / 1048576.0, _rounds));
+                (GC.GetTotalAllocatedBytes(false) - _allocated) / 1048576.0, _rounds,
+                Mean(WorkMs), Percentile(WorkMs, 0.95),
+                _native && _glFrames > 0 ? string.Format(CultureInfo.InvariantCulture, "{0:0.00}/{1:0.00}/{2:0.00}/{3:0.00}", _glDrawMs / frames, _glUploadMs / frames, _glSwapMs / frames, _glClearMs / frames) : "n/a"));
         }
 
         private static double Mean(List<double> sorted)
