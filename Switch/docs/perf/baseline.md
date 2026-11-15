@@ -40,7 +40,26 @@ is `work` mean and p95 at most half of the baseline.
 | effects | `bcdb6e7a` (6 perf commits) | 14.54 | 21.22 | 32.79 / 43.35 | 1.43/2.80/2.43/2.97 | 2 | 70 |
 
 So far: effects x0.89, control x0.98. Allocations are down 15x, but garbage was not where the frame
-time goes. The custom maps have not been scanned yet.
+time goes.
+
+### Genesis FM music
+
+Eleven in-game tracks are VGM files (`barrysboots`, `FunkyDucky`, the `f_*` tracks, ...), synthesized
+by an emulated YM2612 sound chip on the game loop: every 150 ms of music cost tens of milliseconds of the
+frame on the emulator. The track is picked at random, which made runs of the same build bimodal. Since
+`74e85ca1` the synthesis runs on a worker thread (core 1); `-perftest` pins the music (`effects`: VGM
+`barrysboots`, other scenes: Ogg) and `-verify` hashes the first 20 s of it: identical with and without
+the worker, on x64 and on the emulator.
+
+| scene, music | build | upd ms | drw ms | work mean / p95 |
+|---|---|---|---|---|
+| effects, VGM | `74e85ca1 -novgmworker` (as before) | 73.41 | 21.32 | 91.95 / 135.88 |
+| effects, VGM | `74e85ca1` (run 1) | 16.32 | 20.55 | 34.22 / 47.84 |
+| effects, VGM | `74e85ca1` (run 2) | 16.09 | 20.82 | 34.11 / 49.42 |
+| control, Ogg | `74e85ca1` | 3.63–3.80 | 11.2–11.5 | 6.6–6.7 / 12.1–12.6 |
+
+With a VGM track the effects scene does 2.7x less work per frame (update 4.5x). With an Ogg track
+nothing changes.
 
 Profile of `effects` (main thread, 28201 samples, leaf functions):
 
