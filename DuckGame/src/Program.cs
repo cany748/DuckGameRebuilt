@@ -868,6 +868,11 @@ namespace DuckGame
                 SDL3.SDL.SDL_SetAppMetadata("Duck Game", "1.0", "com.duckgame.game");
                 SDL3.SDL.SDL_SetHint(SDL3.SDL.SDL_HINT_APP_NAME, "Duck Game");
             }
+#if SWITCH
+            // See Switch/native/patches/fna3d-faux-backbuffer.patch; -directbackbuffer is for comparisons.
+            if (!commandLine.Contains("-directbackbuffer"))
+                SDL2.SDL.SDL_SetHint("FNA3D_FORCE_FAUX_BACKBUFFER", "1");
+#endif
             main = new Main();
             if (Debugger.IsAttached)
             {

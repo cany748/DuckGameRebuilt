@@ -1,0 +1,16 @@
+--- a/src/FNA3D_Driver_OpenGL.c	2026-11-16 15:40:03.221469066 +0700
++++ b/src/FNA3D_Driver_OpenGL.c	2026-11-16 15:40:03.230809143 +0700
+@@ -2880,6 +2880,13 @@
+ 				drawY != parameters->backBufferHeight	);
+ 	useFauxBackbuffer = (	useFauxBackbuffer ||
+ 				(parameters->multiSampleCount > 0)	);
++	/* Rendering into the faux backbuffer leaves the window's buffer alone until Present
++	 * blits it. On Switch the window buffer's dequeue blocks until the compositor
++	 * releases it, which happens a vblank after the previous frame shows: doing that at
++	 * the first Clear made every frame slower than a vblank wait for the next one.
++	 */
++	useFauxBackbuffer = (	useFauxBackbuffer ||
++				SDL_GetHintBoolean("FNA3D_FORCE_FAUX_BACKBUFFER", 0)	);
+ 
+ 	if (useFauxBackbuffer)
+ 	{

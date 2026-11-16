@@ -40,7 +40,7 @@ namespace DuckGame
         private static readonly float[] Gpu = new float[13];
         private static double _glDraws, _glUploads, _glTargets;
         private static int _glFrames;
-        private static double _glFinishMs;
+        private static double _glFinishMs, _frameIntervals, _lastFrameStart = -1;
         private static double _glDrawMs, _glUploadMs, _glSwapMs, _glClearMs, _frameMs, _previousFrameMs = -1;
         private static readonly List<double> WorkMs = new List<double>();
         private static readonly PerfBot[] Bots = new PerfBot[8];
@@ -255,6 +255,9 @@ namespace DuckGame
                 return;
             double now = Now;
             CloseUpdate(now);
+            if (Measuring && _drawStart < 0 && _lastFrameStart >= 0)
+                _frameIntervals += now - _lastFrameStart;
+            _lastFrameStart = now;
             _drawStart = now;
             // Drawing takes random numbers too (flicker, shake). It gets its own generator, so the
             // simulation doesn't depend on how many frames were drawn between two updates.
@@ -430,7 +433,7 @@ namespace DuckGame
                 _musicBytes = 0;
                 _pictureFrame = -1;
                 _glDraws = _glUploads = _glTargets = _glFrames = 0;
-                _glDrawMs = _glUploadMs = _glSwapMs = _glClearMs = _glFinishMs = 0;
+                _glDrawMs = _glUploadMs = _glSwapMs = _glClearMs = _glFinishMs = _frameIntervals = 0;
                 SetFinishMode(SceneName.EndsWith(GpuSuffix));
                 _previousFrameMs = -1;
                 WorkMs.Clear();
@@ -537,7 +540,7 @@ namespace DuckGame
             double update = Mean(UpdateMs), draw = Mean(DrawMs);
             int frames = Math.Max(_glFrames, 1);
             Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0} work={20:0.00}/{21:0.00} glms={22} finish={23:0.00}",
+                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0} work={20:0.00}/{21:0.00} glms={22} finish={23:0.00} fps={24:0.0}",
                 SceneName, UpdateMs.Count,
                 update, Percentile(UpdateMs, 0.5), Percentile(UpdateMs, 0.95), Percentile(UpdateMs, 0.99), Percentile(UpdateMs, 1),
                 draw, Percentile(DrawMs, 0.5), Percentile(DrawMs, 0.95), Percentile(DrawMs, 0.99), Percentile(DrawMs, 1),
@@ -547,7 +550,8 @@ namespace DuckGame
                 (GC.GetTotalAllocatedBytes(false) - _allocated) / 1048576.0, _rounds,
                 Mean(WorkMs), Percentile(WorkMs, 0.95),
                 _native && _glFrames > 0 ? string.Format(CultureInfo.InvariantCulture, "{0:0.00}/{1:0.00}/{2:0.00}/{3:0.00}", _glDrawMs / frames, _glUploadMs / frames, _glSwapMs / frames, _glClearMs / frames) : "n/a",
-                _glFinishMs / frames));
+                _glFinishMs / frames,
+                _frameIntervals > 0 ? 1000.0 * DrawMs.Count / _frameIntervals : 0));
         }
 
         private static double Mean(List<double> sorted)
