@@ -99,3 +99,28 @@ was wider than the static tile cache allowed, 213 batches a frame).
   frame 2.8 -> 0.9 ms in `effects`).
 
 World and sound hashes stay equal to the x64 reference for every scene.
+
+## Console
+
+`-perftest` on a Switch (handheld, stock clocks). Frame time is update + draw including waits; FPS is
+measured from frame starts.
+
+| scene | run 2 (`-perfprofile`, direct backbuffer) | run 3 (faux backbuffer) |
+|---|---|---|
+| control | 16.3 ms, ~61 FPS | 59.8 FPS |
+| effects (VGM) | 31.6 ms, ~32 FPS | 35.9 FPS |
+| heavy1 Molten Gun Arena | 31.4 ms, ~32 FPS | 40.1 FPS |
+| heavy2 Egg Corridor | 16.4 ms, ~61 FPS | 59.9 FPS |
+| heavy3 minebeta2 | 28.4 ms, ~35 FPS | 48.7 FPS |
+| heavy4 de_dust2 | 17.2 ms, ~58 FPS | 59.2 FPS |
+| heavy5 Second | 23.2 ms, ~43 FPS | 46.9 FPS |
+
+What the console showed that the emulator does not:
+
+- update is 0.6–1.0x the emulator's (`THROTTLE=40` makes the guest CPU too slow), GL calls cost under
+  a millisecond a frame, and the CPU side of drawing (sprite batching, `Thing.Draw`) is the largest part;
+- `-gpufinish`: 3–5 ms of GPU work is left when the CPU finishes a frame, so frames are CPU-bound;
+- the window buffer was dequeued at the first `Clear` of a frame and that waited until the compositor
+  released it, a vblank after the previous frame was shown: any frame over 16.7 ms took 33.3 ms. With
+  `FNA3D_FORCE_FAUX_BACKBUFFER` (patch in `Switch/native/patches`) the frame is drawn into an FBO and the
+  window buffer is only needed for the final blit. `-directbackbuffer` turns it off.
