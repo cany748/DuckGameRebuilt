@@ -118,12 +118,14 @@ void* getsym_Internal(const char *name)
     extern void switch_pin_worker_thread(int core);
     extern void switch_profiler_stop(const char *path);
     extern const char *switch_audio_error_step(void);
+    extern void switch_gpu_finish(int on);
     if (strcmp(name, "switch_gpu_stats") == 0) return (void *)switch_gpu_stats;
     if (strcmp(name, "switch_audio_stats") == 0) return (void *)switch_audio_stats;
     if (strcmp(name, "switch_pin_worker_thread") == 0) return (void *)switch_pin_worker_thread;
     if (strcmp(name, "switch_profiler_start") == 0) return (void *)switch_profiler_start;
     if (strcmp(name, "switch_profiler_stop") == 0) return (void *)switch_profiler_stop;
     if (strcmp(name, "switch_audio_error_step") == 0) return (void *)switch_audio_error_step;
+    if (strcmp(name, "switch_gpu_finish") == 0) return (void *)switch_gpu_finish;
 
 	return NULL;
 }

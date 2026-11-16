@@ -26,6 +26,7 @@ enum
     STAT_GC_COUNT, /* same */
     STAT_GC_MAX_MS,
     STAT_HEAP_MB,
+    STAT_FINISH_MS, /* glFinish before the swap, only with switch_gpu_finish(1) */
     STAT_COUNT
 };
 
@@ -103,9 +104,29 @@ void __wrap_FNA3D_Clear(FNA3D_Device *d, int options, void *color, float depth, 
     current[STAT_CLEAR_MS] += ms_since(t);
 }
 
+/* Diagnostic: with finish mode on, the frame waits for the GPU before the swap, and the wait is how much
+ * GPU work was still queued when the CPU was done: near zero means the frame is CPU-bound. It removes the
+ * CPU/GPU overlap, so frames measured this way are slower. */
+#include <EGL/egl.h>
+static int finish_mode;
+static void (*gl_finish)(void);
+
+void switch_gpu_finish(int on)
+{
+    if (on && gl_finish == NULL)
+        gl_finish = (void (*)(void))eglGetProcAddress("glFinish");
+    finish_mode = on && gl_finish != NULL;
+}
+
 void __real_FNA3D_SwapBuffers(FNA3D_Device *, void *, void *, void *);
 void __wrap_FNA3D_SwapBuffers(FNA3D_Device *d, void *src, void *dst, void *window)
 {
+    if (finish_mode)
+    {
+        uint64_t f = now();
+        gl_finish();
+        current[STAT_FINISH_MS] = ms_since(f);
+    }
     uint64_t t = now();
     __real_FNA3D_SwapBuffers(d, src, dst, window);
     current[STAT_SWAP_MS] = ms_since(t);
@@ -159,4 +180,6 @@ void switch_gpu_stats(float *out, int count)
     }
     if (STAT_HEAP_MB < count)
         out[STAT_HEAP_MB] = (float)(mono_gc_get_heap_size() / (1024 * 1024));
+    if (STAT_FINISH_MS < count)
+        out[STAT_FINISH_MS] = (float)last_frame[STAT_FINISH_MS];
 }
