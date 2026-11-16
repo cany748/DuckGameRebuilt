@@ -314,7 +314,31 @@ namespace DuckGame
 
         private readonly DepthKeys keys = new DepthKeys();
 
-        Dictionary<float, List<MTSpriteBatchItem>> _batchItemListv2 = new Dictionary<float, List<MTSpriteBatchItem>>();
+        // The items of one depth, in the order they were drawn. A plain array: List<T> indexing goes through
+        // shared generic code under Mono AOT, and DrawBatch reads every item through it.
+        private sealed class DepthList
+        {
+            public MTSpriteBatchItem[] Items = new MTSpriteBatchItem[16];
+            public int Count;
+
+            public void Add(MTSpriteBatchItem item)
+            {
+                if (Count == Items.Length)
+                    Array.Resize(ref Items, Count * 2);
+                Items[Count++] = item;
+            }
+
+            public void Clear()
+            {
+                Array.Clear(Items, 0, Count);
+                Count = 0;
+            }
+        }
+
+        Dictionary<float, DepthList> _batchItemListv2 = new Dictionary<float, DepthList>();
+        // Consecutive sprites mostly share a depth; the bucket of the last one saves the dictionary lookup.
+        private float _lastDepth;
+        private DepthList _lastDepthList;
         MTSpriteBatchItem LastSpriteBatchItem;
         public int batchlistCount = 0;
         public float depthmod = 1f;
@@ -343,18 +367,35 @@ namespace DuckGame
         // being left to the garbage collector. Items kept by a sprite, and items a material may still
         // look at after the batch, stay out of the pool.
         private readonly Stack<MTSpriteBatchItem> _freeItems = new Stack<MTSpriteBatchItem>(1024);
-        private readonly Stack<List<MTSpriteBatchItem>> _freeDepthLists = new Stack<List<MTSpriteBatchItem>>(64);
+        private readonly Stack<DepthList> _freeDepthLists = new Stack<DepthList>(64);
 
-        private List<MTSpriteBatchItem> NewDepthList() => _freeDepthLists.Count > 0 ? _freeDepthLists.Pop() : new List<MTSpriteBatchItem>();
+        private DepthList NewDepthList() => _freeDepthLists.Count > 0 ? _freeDepthLists.Pop() : new DepthList();
+
+        // Same bucket as _batchItemListv2[depth] would give (float.Equals: NaN never matches here and
+        // goes to the dictionary, which does handle it).
+        private DepthList DepthBucket(float depth)
+        {
+            if (_lastDepthList != null && depth == _lastDepth)
+                return _lastDepthList;
+            if (!_batchItemListv2.TryGetValue(depth, out DepthList list))
+            {
+                keys.Add(depth);
+                list = NewDepthList();
+                _batchItemListv2.Add(depth, list);
+            }
+            _lastDepth = depth;
+            _lastDepthList = list;
+            return list;
+        }
 
         private void RecycleBatchItems()
         {
             for (int i = 0; i < keys.Count; i++)
             {
-                List<MTSpriteBatchItem> items = _batchItemListv2[keys[i]];
+                DepthList items = _batchItemListv2[keys[i]];
                 for (int j = 0; j < items.Count; j++)
                 {
-                    MTSpriteBatchItem item = items[j];
+                    MTSpriteBatchItem item = items.Items[j];
                     if (item.retained || item.Material != null)
                         continue;
                     item.Reset();
@@ -373,31 +414,18 @@ namespace DuckGame
 
             LastSpriteBatchItem = batchItem;
 
-            float modifiedDepth = Depth * depthmod;
-
-            if (!_batchItemListv2.TryGetValue(modifiedDepth, out List<MTSpriteBatchItem> LbatchItemList))
-            {
-                keys.Add(modifiedDepth);
-                LbatchItemList = NewDepthList();
-                LbatchItemList.Add(batchItem);
-                _batchItemListv2[modifiedDepth] = LbatchItemList;
-            }
-            else
-            {
-                LbatchItemList.Add(batchItem);
-            }
-
+            DepthBucket(Depth * depthmod).Add(batchItem);
             return batchItem;
         }
 
         public IEnumerable<MTSpriteBatchItem> StealSpriteBatchItems()
         {
 
-            foreach (List<MTSpriteBatchItem> depthcolleciton in _batchItemListv2.Values)
+            foreach (DepthList depthcolleciton in _batchItemListv2.Values)
             {
                 for (int i = 0; i < depthcolleciton.Count; i++)
                 {
-                    yield return depthcolleciton[i];
+                    yield return depthcolleciton.Items[i];
                 }
             }
         }
@@ -424,16 +452,7 @@ namespace DuckGame
             //}
             batchlistCount += 1;
             item.retained = true;
-            float ndepth = item.Depth * depthmod;
-            if (!_batchItemListv2.TryGetValue(ndepth, out List<MTSpriteBatchItem> LbatchItemList))
-            {
-                keys.Add(ndepth);
-                LbatchItemList = NewDepthList();
-                LbatchItemList.Add(item);
-                _batchItemListv2.Add(ndepth, LbatchItemList);
-                return;
-            }
-            LbatchItemList.Add(item);
+            DepthBucket(item.Depth * depthmod).Add(item);
         }
 
         public MTSimpleSpriteBatchItem CreateSimpleBatchItem()
@@ -692,7 +711,7 @@ namespace DuckGame
             int keyindex = 0;
             int index1 = 0;
             int numBatchItems;
-            List<MTSpriteBatchItem> mTSpriteBatchItems = _batchItemListv2[keys[keyindex]];
+            DepthList mTSpriteBatchItems = _batchItemListv2[keys[keyindex]];
             for (int count = batchlistCount; count > 0; count -= numBatchItems)
             {
                 int start = 0;
@@ -713,7 +732,7 @@ namespace DuckGame
                         keyindex += 1;
                         mTSpriteBatchItems = _batchItemListv2[keys[keyindex]];
                     }
-                    MTSpriteBatchItem batchItem = mTSpriteBatchItems[index1];
+                    MTSpriteBatchItem batchItem = mTSpriteBatchItems.Items[index1];
                     if (batchItem.Texture != texture2D || (batchItem.Material != null && batchItem.NormalTexture != Realtex2D) || batchItem.Material != material)//(batchItem.Texture != texture2D ? 1 : (batchItem.Material != material ? 1 : 0)) != 0
                     {
                         FlushVertexArray(start, end);
@@ -825,6 +844,7 @@ namespace DuckGame
             RecycleBatchItems();
             batchlistCount = 0;
             _batchItemListv2.Clear();
+            _lastDepthList = null;
             //foreach(float key in keys)
             //{
             //    _batchItemListv2[key].Clear();
