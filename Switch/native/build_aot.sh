@@ -22,6 +22,10 @@ MONO_OPT=${MONO_AOT_OPT:-}
 # up to which callees are inlined (Mono's default is 20 bytes).
 GAME_OPT=${MONO_AOT_GAME_OPT:-}
 GAME_INLINELIMIT=${MONO_AOT_GAME_INLINELIMIT:-}
+# MONO_AOT_GAME_LLVM=1 compiles the game assembly through LLVM (opt + llc) with a Release mono-aot-cross
+# built with LLVM support (see Switch/README.md); its code lands in <name>-llvm.o next to <name>.o.
+GAME_LLVM=${MONO_AOT_GAME_LLVM:-}
+LLVM_AOT_DIR="$MONO_NX_ROOT/artifacts/bin/mono/linux.x64.Release/cross/linux-x64/libnx-arm64"
 # DGR is large and generic-heavy; the defaults (1000s) run out at runtime.
 AOT_OPTS="full,interp,static,direct-icalls,nodebug,ntrampolines=40000,ngsharedvt-trampolines=8192,nimt-trampolines=8192,tool-prefix=aarch64-none-elf-"
 
@@ -46,7 +50,7 @@ while read -r src; do
 	stamp="$OUT/$name.opts"
 	want="$MONO_OPT|"
 	if [ "$name" = DuckGame ]; then
-		want="$want$GAME_OPT|$GAME_INLINELIMIT"
+		want="$want$GAME_OPT|$GAME_INLINELIMIT|$GAME_LLVM"
 	fi
 	[ "$(cat "$stamp" 2>/dev/null)" = "$want" ] || rm -f "$obj"
 	echo "$want" > "$stamp"
@@ -55,16 +59,23 @@ while read -r src; do
 	else
 		echo "aot: $name"
 		opt=$MONO_OPT
+		compiler=$AOT
+		aot_opts=$AOT_OPTS
+		rm -f "$OUT/$name-llvm.o"
+		if [ "$name" = DuckGame ] && [ -n "$GAME_LLVM" ]; then
+			compiler="$LLVM_AOT_DIR/mono-aot-cross"
+			aot_opts="$aot_opts,llvm,llvm-path=$LLVM_AOT_DIR/,llvm-outfile=$OUT/$name-llvm.o"
+		fi
 		# An empty MONO_INLINELIMIT would read as 0 and turn inlining off, so it is only set when given.
 		limit=()
 		if [ "$name" = DuckGame ]; then
 			opt="$opt $GAME_OPT"
 			[ -n "$GAME_INLINELIMIT" ] && limit=(MONO_INLINELIMIT="$GAME_INLINELIMIT")
 		fi
-		if ! env "${limit[@]}" MONO_PATH="$INPUT" "$AOT" $opt --path="$INPUT" --aot="$AOT_OPTS,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
+		if ! env "${limit[@]}" MONO_PATH="$INPUT" "$compiler" $opt --path="$INPUT" --aot="$aot_opts,outfile=$obj" "$INPUT/$file" > "$OUT/$name.log" 2>&1; then
 			# The (debug) cross compiler fails on a few assemblies; they stay interpreted.
 			echo "aot: FAILED $name, skipped (see $OUT/$name.log)" | tee -a "$OUT/failed.txt"
-			rm -f "$obj"
+			rm -f "$obj" "$OUT/$name-llvm.o"
 			continue
 		fi
 		# Mono puts the method_addresses table (plain `bl` instructions) in .data.rel.ro, which the
@@ -77,6 +88,7 @@ done < "$GEN/aot_assemblies.txt"
 # Drop objects of assemblies that are no longer in the list.
 for obj in "$OUT"/*.o; do
 	name=$(basename "$obj" .o)
+	name=${name%-llvm}
 	grep -q "/$name\.\(dll\|exe\)$" "$GEN/aot_assemblies.txt" || rm -f "$obj"
 done
 du -sh "$OUT"
