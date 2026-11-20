@@ -463,7 +463,17 @@ namespace DuckGame
                     AutoUpdatables.ClearSounds();
                     SequenceItem.sequenceItems.Clear();
                     Graphics.GarbageDisposal(true);
+#if SWITCH
+                    // A full collection here stalls the level change for 0.2-0.8 s on the console. The
+                    // nursery is collected; the major heap is left to SGen's concurrent collector (see
+                    // MONO_GC_PARAMS in Switch/native/source/main.c), unless it has grown large.
+                    if (GC.GetTotalMemory(false) > 300L * 1024 * 1024)
+                        GC.Collect(1, GCCollectionMode.Optimized);
+                    else
+                        GC.Collect(0, GCCollectionMode.Optimized);
+#else
                     GC.Collect(1, GCCollectionMode.Optimized);
+#endif
                     ++collectionCount;
                     if (!(_core.currentLevel is GameLevel))
                     {
