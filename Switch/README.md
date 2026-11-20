@@ -81,6 +81,34 @@ docker run --rm -v $PWD:/mono-nx -w /mono-nx/dotnet_runtime -e ROOTFS_DIR=/opt/d
 
 Replace `System.Private.CoreLib.dll` with `artifacts/bin/mono/libnx.arm64.Release/` and every framework dll with `artifacts/bin/runtime/net9.0-libnx-Release-arm64/`, keeping the Debug directory names of the SDK. The build reports NETSDK1188 and leaves out `System`, `System.Net`, `System.Net.Sockets` and `netstandard`; the SDK's copies of those work.
 
+## LLVM
+
+The game assembly, FNA and the hot framework assemblies (`System.Private.CoreLib`, `System.Collections`,
+`System.Linq`) are compiled through Mono's LLVM backend: update runs about 1.5x faster than with Mono's own
+code generator, with identical behaviour (`-verify` hashes). `MONO_AOT_LLVM` lists the assemblies
+(`MONO_AOT_LLVM=` turns it off); their LLVM code goes to `build/aot/<name>-llvm.o`.
+
+The mono-nx SDK's `mono-aot-cross` is built without LLVM. A Release one with LLVM is built from
+`exelix11/dotnet_runtime` (branch `libnx`) with two local changes:
+
+- `src/mono/mono.proj`: the AOT compiler is a host (x64) build, so `MonoCrossDir` is cleared for it when
+  targeting libnx; otherwise devkitPro becomes the sysroot of the x64 build;
+- `src/mono/mono/mini/aot-compiler.c`: `-relocation-model=pic` for `TARGET_LIBNX` (the nro is PIE; static
+  LLVM code puts dynamic relocations in read-only segments).
+
+It needs a clang new enough for the libc++ headers of Mono's LLVM 19 package; devkitA64 plus clang 19 from
+apt.llvm.org and `libclang-14-dev` (for the offsets tool) works:
+
+```sh
+docker run --rm -v $PWD:/mono-nx -w /mono-nx/dotnet_runtime -e ROOTFS_DIR=/opt/devkitpro \
+    -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 <devkita64 + clang 19 image> \
+    ./build.sh -s mono.aotcross -c Release /p:MonoCrossAOTTargetOS=libnx /p:MonoAOTEnableLLVM=true \
+    /p:MonoLibClang=/usr/lib/llvm-14/lib/libclang.so
+```
+
+Copy `mono-aot-cross`, `opt`, `llc`, `libc++.so.1` and `libc++abi.so.1` from
+`artifacts/bin/mono/linux.x64.Release/cross/linux-x64/libnx-arm64/` to the same path under `MONO_NX_SDK`.
+
 ## Diagnostics
 
 `Show FPS` and `Frame Stats` are under Options > Graphics. The arguments `-framestats` and `-cpubench` go to `[game] args` in `config.ini`: the second prints a fixed CPU benchmark (`BENCH` lines) to the log.
