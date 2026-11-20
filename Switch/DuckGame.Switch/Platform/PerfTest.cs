@@ -40,6 +40,7 @@ namespace DuckGame
         private static readonly float[] Gpu = new float[13];
         private static double _glDraws, _glUploads, _glTargets;
         private static int _glFrames;
+        private static bool _profileLoad, _profilingLoad;
         private static double _glFinishMs, _frameIntervals, _lastFrameStart = -1;
         private static double _glDrawMs, _glUploadMs, _glSwapMs, _glClearMs, _frameMs, _previousFrameMs = -1;
         private static readonly List<double> WorkMs = new List<double>();
@@ -375,7 +376,8 @@ namespace DuckGame
                 string[] names = only.Split(',');
                 Scenes.RemoveAll(scene => Array.IndexOf(names, scene.Key) < 0);
             }
-            _profile = Program.commandLine.Contains("-perfprofile");
+            _profile = Program.commandLine.Contains("-perfprofile ") || Program.commandLine.EndsWith("-perfprofile");
+            _profileLoad = Program.commandLine.Contains("-perfprofileload");
             if (Program.commandLine.Contains("-gpufinish") && _native)
             {
                 int count = Scenes.Count;
@@ -443,6 +445,10 @@ namespace DuckGame
                     bot.Reset();
                 try
                 {
+                    // -perfprofileload: samples the level load and the warm-up frames instead of the
+                    // measured ones (writes profile-<scene>-load.txt).
+                    if (_profileLoad && _native && Directory.Exists("/switch/DuckGame"))
+                        _profilingLoad = switch_profiler_start() != 0;
                     Level.current = Scenes[_scene].Value();
                     _lastLevel = null;
                     return;
@@ -492,6 +498,11 @@ namespace DuckGame
             ++_sceneFrames;
             if (_sceneFrames == WarmupFrames + 1)
             {
+                if (_profilingLoad)
+                {
+                    switch_profiler_stop("/switch/DuckGame/profile-" + SceneName + "-load.txt");
+                    _profilingLoad = false;
+                }
                 _gen0 = GC.CollectionCount(0);
                 _gen1 = GC.CollectionCount(1);
                 _allocated = GC.GetTotalAllocatedBytes(false);
