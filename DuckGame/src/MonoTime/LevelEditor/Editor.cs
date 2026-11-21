@@ -5125,7 +5125,16 @@ namespace DuckGame
 
         public static List<ClassMember> GetMembers<T>() => GetMembers(typeof(T));
 
+        // The member caches are also filled by the worker thread that prepares the next level (Switch).
+        private static readonly object MemberCacheLock = new object();
+
         public static List<ClassMember> GetMembers(Type t)
+        {
+            lock (MemberCacheLock)
+                return GetMembersLocked(t);
+        }
+
+        private static List<ClassMember> GetMembersLocked(Type t)
         {
             List<ClassMember> members1;
             if (_classMembers.TryGetValue(t, out members1))
@@ -5154,6 +5163,12 @@ namespace DuckGame
         }
 
         public static List<ClassMember> GetStaticMembers(Type t)
+        {
+            lock (MemberCacheLock)
+                return GetStaticMembersLocked(t);
+        }
+
+        private static List<ClassMember> GetStaticMembersLocked(Type t)
         {
             List<ClassMember> staticMembers1;
             if (_staticClassMembers.TryGetValue(t, out staticMembers1))
@@ -5185,17 +5200,20 @@ namespace DuckGame
 
         public static ClassMember GetMember(Type t, string name)
         {
-            Dictionary<string, ClassMember> dictionary;
-            if (!_classMemberNames.TryGetValue(t, out dictionary))
+            lock (MemberCacheLock)
             {
-                GetMembers(t);
+                Dictionary<string, ClassMember> dictionary;
                 if (!_classMemberNames.TryGetValue(t, out dictionary))
-                    return null;
-            }
+                {
+                    GetMembersLocked(t);
+                    if (!_classMemberNames.TryGetValue(t, out dictionary))
+                        return null;
+                }
 
-            ClassMember member;
-            dictionary.TryGetValue(name, out member);
-            return member;
+                ClassMember member;
+                dictionary.TryGetValue(name, out member);
+                return member;
+            }
         }
 
         internal static Type GetType(string name) => ModLoader.GetType(name);

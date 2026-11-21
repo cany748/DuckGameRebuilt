@@ -345,6 +345,29 @@ namespace DuckGame
             }
         }
 
+        // Parses this chunk and every chunk under it, so the level loader finds them all parsed. Used to
+        // prepare the next level on a worker thread (Switch); the chunks must not be in use meanwhile.
+        internal void DeserializeTree()
+        {
+            if (_result == DeserializeResult.HeaderDeserialized)
+                Deserialize();
+            foreach (BinaryClassChunk chunk in _headerDictionary.Values)
+                chunk?.DeserializeTree();
+            if (_extraProperties != null)
+            {
+                foreach (var property in _extraProperties)
+                {
+                    foreach (object value in property.Value)
+                        (value as BinaryClassChunk)?.DeserializeTree();
+                }
+            }
+            if (this is LevelObjects levelObjects)
+            {
+                foreach (BinaryClassChunk chunk in levelObjects.objects)
+                    chunk?.DeserializeTree();
+            }
+        }
+
         public T GetChunk<T>(string name) => GetChunk<T>(name, false);
 
         public T GetChunk<T>(string name, bool pPartialDeserialize) => GetChunk<T>(name, pPartialDeserialize, false);

@@ -664,6 +664,9 @@ namespace DuckGame
                     }
                     Level nextLevel = GetNextLevel();
                     previousLevel = nextLevel.level;
+#if SWITCH
+                    (nextLevel as XMLLevel)?.StartPrefetch();
+#endif
 
                     if (!Network.isActive && DGRSettings.SkipExcessRounds)
                     {

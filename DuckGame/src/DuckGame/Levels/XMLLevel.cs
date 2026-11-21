@@ -255,8 +255,56 @@ namespace DuckGame
             return levelData;
         }
 
+#if SWITCH
+        private System.Threading.Thread _prefetch;
+        private LevelData _prefetched;
+
+        // Reads and parses the level file on a worker thread while the previous round ends, so Initialize
+        // only builds the things. Only for levels read from disk: their LevelData is a fresh object nobody
+        // else touches until Initialize joins the thread. Building the things stays on the game thread
+        // (it changes game state and draws from Rando).
+        internal void StartPrefetch()
+        {
+            if (_prefetch != null || _data != null || level == "RANDOM" || level == "WORKSHOP" || Network.isActive
+                || level.Contains("_tempPlayLevel") || Content.GetLevel(level) != null)
+                return;
+            _prefetch = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    LevelData data = LoadLevelDoc();
+                    data?.DeserializeTree();
+                    _prefetched = data;
+                }
+                catch (Exception)
+                {
+                    _prefetched = null;
+                }
+            })
+            {
+                IsBackground = true,
+                Priority = System.Threading.ThreadPriority.BelowNormal
+            };
+            _prefetch.Start();
+        }
+
+        private void FinishPrefetch()
+        {
+            if (_prefetch == null)
+                return;
+            _prefetch.Join();
+            _prefetch = null;
+            if (_data == null)
+                _data = _prefetched;
+            _prefetched = null;
+        }
+#endif
+
         public override void Initialize()
         {
+#if SWITCH
+            FinishPrefetch();
+#endif
             AutoBlock._kBlockIndex = 0;
             if (level == "RANDOM" || cancelLoading)
                 return;
