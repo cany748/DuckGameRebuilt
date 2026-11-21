@@ -50,6 +50,7 @@ namespace DuckGame
         private int _totalSteps;
         public List<MaterialThing> _currentlyImpacting = new List<MaterialThing>();
         private static List<MaterialThing> bulletImpactList = new List<MaterialThing>();
+        private static List<Thing> bulletCandidates = new List<Thing>();
         private int hitsLogged;
         public Vec2 currentTravel;
         public bool renderedGhost;
@@ -255,12 +256,22 @@ namespace DuckGame
             Vec2 zero = Vec2.Zero;
             bool willBeStopped = false;
             reboundCalled = false;
+            // Nothing moves between steps until a step hits something or leaves a thing it was inside, so
+            // until then only the things around the whole stepped segment need testing.
+            bool useCandidates = _currentlyImpacting.Count == 0;
+            if (useCandidates)
+                Level.current.CollisionBulletCandidates(p1, p1 + travelDirNormalized * Math.Max(num1, 1), bulletCandidates);
             do
             {
                 bulletImpactList.Clear();
                 --num1;
                 --_totalSteps;
-                Level.current.CollisionBullet(currentTravel, bulletImpactList);
+                if (useCandidates)
+                    Level.current.CollisionBullet(currentTravel, bulletImpactList, bulletCandidates);
+                else
+                    Level.current.CollisionBullet(currentTravel, bulletImpactList);
+                if (bulletImpactList.Count > 0 || _currentlyImpacting.Count > 0)
+                    useCandidates = false;
                 if (!_tracer)
                 {
                     for (int index = 0; index < _currentlyImpacting.Count; ++index)

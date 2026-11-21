@@ -2350,6 +2350,39 @@ namespace DuckGame
         }
 
 
+        // The dynamic MaterialThings whose bounds touch the box around a and b (1 px margin), in the order
+        // CollisionBullet enumerates them: CollisionBullet(point, output, candidates) gives the same result as
+        // CollisionBullet(point, output) for any point in that box while no thing moves.
+        public void CollisionBulletCandidates(Vec2 a, Vec2 b, List<Thing> candidates)
+        {
+            candidates.Clear();
+            float minX = Math.Min(a.x, b.x) - 1f;
+            float maxX = Math.Max(a.x, b.x) + 1f;
+            float minY = Math.Min(a.y, b.y) - 1f;
+            float maxY = Math.Max(a.y, b.y) + 1f;
+            foreach (Thing thing in _things.GetDynamicObjects(typeof(MaterialThing)))
+            {
+                if (thing.right >= minX && thing.left <= maxX && thing.bottom >= minY && thing.top <= maxY)
+                    candidates.Add(thing);
+            }
+        }
+
+        public void CollisionBullet(Vec2 point, List<MaterialThing> output, List<Thing> candidates)
+        {
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                Thing thing = candidates[i];
+                if (!thing.removeFromLevel && Collision.Point(point, thing))
+                    output.Add(thing as MaterialThing);
+            }
+            if (_things.HasStaticObjects(typeof(MaterialThing)))
+            {
+                MaterialThing thing2 = _things.quadTree.CheckPoint<MaterialThing>(point);
+                if (thing2 != null)
+                    output.Add(thing2);
+            }
+        }
+
         public static T CheckRay<T>(Vec2 start, Vec2 end) => current.CollisionRay<T>(start, end);
 
         public T CollisionRay<T>(Vec2 start, Vec2 end) => CheckRay<T>(start, end, out Vec2 _);
