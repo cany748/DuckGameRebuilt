@@ -1781,15 +1781,23 @@ namespace DuckGame
             return thing1 == null ? default(T) : (T)(object)thing1;
         }
 
+        private readonly List<Thing> _circleCandidates = new List<Thing>(64);
+
         public T CollisionCircle<T>(Vec2 p1, float radius, Thing ignore)
         {
-            foreach (Thing thing in things.CollisionCircleAll(p1, radius, typeof(T)))
+            List<Thing> candidates = _circleCandidates;
+            candidates.Clear();
+            things.GetThingsInto(p1, radius * 2, radius * 2, typeof(T), candidates);
+            for (int i = 0; i < candidates.Count; i++)
             {
+                Thing thing = candidates[i];
                 if (!thing.removeFromLevel && thing != ignore && Collision.Circle(p1, radius, thing))
                 {
+                    candidates.Clear();
                     return (T)(object)thing;
                 }
             }
+            candidates.Clear();
             return default(T);
         }
 
@@ -1803,27 +1811,20 @@ namespace DuckGame
         //    }
         //    return _things.HasStaticObjects(key) ? _things.quadTree.CheckCircle<T>(p1, radius) : default(T);
         //}
-        public T CollisionCircle<T>(Vec2 p1, float radius)
-        {
-            foreach (Thing thing in things.CollisionCircleAll(p1, radius, typeof(T)))
-            {
-                if (!thing.removeFromLevel && Collision.Circle(p1, radius, thing))
-                {
-                    return (T)(object)thing;
-                }
-            }
-            return default(T);
-        }
+        public T CollisionCircle<T>(Vec2 p1, float radius) => CollisionCircle<T>(p1, radius, null);
         public IEnumerable<T> CollisionCircleAll<T>(Vec2 p1, float radius) //ban
         {
             List<T> outList1 = new List<T>();
-            foreach (Thing thing in things.CollisionCircleAll(p1, radius, typeof(T)))
+            List<Thing> candidates = _circleCandidates;
+            candidates.Clear();
+            things.GetThingsInto(p1, radius * 2, radius * 2, typeof(T), candidates);
+            for (int i = 0; i < candidates.Count; i++)
             {
+                Thing thing = candidates[i];
                 if (!thing.removeFromLevel && Collision.Circle(p1, radius, thing))
-                {
                     outList1.Add((T)(object)thing);
-                }
             }
+            candidates.Clear();
             return outList1;//nextCollisionList.AsEnumerable<object>().Cast<T>();
         }
         public IEnumerable<T> CollisionCircleAllOld<T>(Vec2 p1, float radius) //old //brought it back to fix collision issue with the postitron shooter -Lucky
@@ -2120,15 +2121,7 @@ namespace DuckGame
         //    }
         //    return _things.HasStaticObjects(key) ? _things.quadTree.CheckPoint<T>(point) : default(T);
         //}
-        public T CollisionPoint<T>(Vec2 point)
-        {
-            foreach (Thing thing in things.CollisionPointAll(point, typeof(T)))
-            {
-                if (!thing.removeFromLevel && Collision.Point(point, thing))
-                    return (T)(object)thing;
-            }
-            return default(T);
-        }
+        public T CollisionPoint<T>(Vec2 point) => CollisionPointFast<T>(point);
         public T CollisionPointFast<T>(Vec2 point)
         {
             List<Thing> t = things.CollisionPointAllFast(point, typeof(T));
@@ -2272,11 +2265,12 @@ namespace DuckGame
         public IEnumerable<T> CollisionPointAll<T>(Vec2 point)
         {
             List<object> nextCollisionList = GetNextCollisionList();
-            foreach (Thing thing in things.CollisionPointAll(point, typeof(T)))
+            List<Thing> cell = things.CollisionPointAllFast(point, typeof(T));
+            for (int i = 0; i < cell.Count; i++)
             {
+                Thing thing = cell[i];
                 if (!thing.removeFromLevel && Collision.Point(point, thing))
                     nextCollisionList.Add(thing);
-
             }
             return nextCollisionList.AsEnumerable().Cast<T>();
         }

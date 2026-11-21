@@ -319,6 +319,52 @@ namespace DuckGame
             }
         }
         private int _queryIds = 0;
+
+        // GetThings(Position, width, height, t) written into a list: the same things in the same order.
+        public void GetThingsInto(Vec2 Position, float width, float height, Type t, List<Thing> into)
+        {
+            if (float.IsNaN(width) || float.IsNaN(height))
+                return;
+            height = height * 0.5f;
+            width = width * 0.5f;
+            int top = (int)((Position.y + height + offset) / cellsize);
+            int bottom = (int)((Position.y - height + offset) / cellsize);
+            int right = (int)((Position.x + width + offset) / cellsize);
+            int left = (int)((Position.x - width + offset) / cellsize);
+            int typekey = t.GetHashCode();
+            if (left == right && top == bottom)
+            {
+                if (Buckets.TryGetValue(new Vec2(left, bottom), out Dictionary<int, List<Thing>> cell) &&
+                    cell.TryGetValue(typekey, out List<Thing> cellThings))
+                    into.AddRange(cellThings);
+                return;
+            }
+            if (_queryIds > Int32.MaxValue - 1)
+            {
+                _queryIds = 0;
+            }
+            int queryId = _queryIds++;
+            for (int x = left; x <= right; x++)
+            {
+                for (int y = bottom; y <= top; y++)
+                {
+                    if (Buckets.TryGetValue(new Vec2(x, y), out Dictionary<int, List<Thing>> cell) &&
+                        cell.TryGetValue(typekey, out List<Thing> cellThings))
+                    {
+                        for (int i = 0; i < cellThings.Count; i++)
+                        {
+                            Thing item = cellThings[i];
+                            if (item._queryId != queryId)
+                            {
+                                item._queryId = queryId;
+                                into.Add(item);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         public IEnumerable<Thing> GetThings(Vec2 p1, Vec2 p2, Type t) //Line
         {
             Vec2[] ids = GetIdForLine(p1, p2);
