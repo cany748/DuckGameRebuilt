@@ -1849,13 +1849,21 @@ namespace DuckGame
                     if (_pressStartBlink >= 0.5)
                     {
                         DisplayUpperMonitorMessage("GO TO EDITOR", 1);
+#if SWITCH
+                        DisplayUpperMonitorMessage("PRESS L+R", 2);
+#else
                         DisplayUpperMonitorMessage("PRESS START", 2);
+#endif
                         DisplayUpperMonitorMessage("GO TO LOBBY", 3);
                     }
                     else
                     {
                         DisplayUpperMonitorMessage("@GRAB@", 1);
+#if SWITCH
+                        DisplayUpperMonitorMessage("@LBUMPER@@RBUMPER@", 2);
+#else
                         DisplayUpperMonitorMessage("@START@", 2);
+#endif
                         DisplayUpperMonitorMessage("@SHOOT@", 3);
                     }
                 }

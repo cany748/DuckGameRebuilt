@@ -615,7 +615,14 @@ namespace DuckGame
 
         public bool JoinGamePressed()
         {
+#if SWITCH
+            // Switch games join a player with L + R (SL + SR on a sideways Joy-Con, which arrive as the
+            // shoulder buttons too): one of them pressed while the other is held.
+            return (Pressed(Triggers.LeftBumper) && Down(Triggers.RightBumper))
+                || (Pressed(Triggers.RightBumper) && Down(Triggers.LeftBumper));
+#else
             return Pressed(Triggers.Start, false);
+#endif
         }
 
         public virtual bool Pressed(string trigger, bool any = false)

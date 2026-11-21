@@ -5,7 +5,7 @@ namespace DuckGame
 {
     public class SwitchJoyConDual : JoyConBase
     {
-        private static readonly Dictionary<int, Sprite> _dualJoyImages = new Dictionary<int, Sprite>()
+        internal static readonly Dictionary<int, Sprite> _dualJoyImages = new Dictionary<int, Sprite>()
     {
       {
         4096,

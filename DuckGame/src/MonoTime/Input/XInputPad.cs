@@ -7,6 +7,55 @@ namespace DuckGame
 {
     public class XInputPad : AnalogGamePad
     {
+#if SWITCH
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int switch_npad_style(int index);
+
+        private const int NpadPro = 1, NpadDual = 2, NpadLeft = 3, NpadRight = 4;
+        private static bool _npadQueryMissing;
+
+        // See Switch/native/source/npad.c.
+        private static int NpadStyle(int index)
+        {
+            if (_npadQueryMissing)
+                return 0;
+            try
+            {
+                return switch_npad_style(index);
+            }
+            catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
+            {
+                // Desktop benchmark build.
+                _npadQueryMissing = true;
+                return 0;
+            }
+        }
+
+        private static bool IsSingleJoyCon(int index)
+        {
+            int style = NpadStyle(index);
+            return style == NpadLeft || style == NpadRight;
+        }
+
+        // The console's own icons (Content/buttons/switch), as the original Switch release shows them.
+        private Dictionary<int, Sprite> SwitchImages()
+        {
+            switch (NpadStyle(index))
+            {
+                case NpadLeft:
+                    return SwitchJoyConLeft._leftJoyImages;
+                case NpadRight:
+                    return SwitchJoyConRight._rightJoyImages;
+                case NpadDual:
+                    return SwitchJoyConDual._dualJoyImages;
+                case NpadPro:
+                    return SwitchProController._proControllerImages;
+                default:
+                    return null;
+            }
+        }
+#endif
+
         public Dictionary<int, string> _triggerNames = new Dictionary<int, string>()
         {
           {
@@ -829,6 +878,10 @@ namespace DuckGame
         
         public override Dictionary<int, string> GetTriggerNames()
         {
+#if SWITCH
+            if (NpadStyle(index) != 0)
+                return _triggerNamesSwitch;
+#endif
             bool isPlayStationController = false;
             if (Program.IS_SDL2)
             {
@@ -868,6 +921,14 @@ namespace DuckGame
         public override Sprite GetMapImage(int map)
         {
             Sprite mapImage;
+#if SWITCH
+            Dictionary<int, Sprite> switchImages = SwitchImages();
+            if (switchImages != null)
+            {
+                switchImages.TryGetValue(map, out mapImage);
+                return mapImage;
+            }
+#endif
 
             if (Program.IS_SDL2)
             {
@@ -953,6 +1014,16 @@ namespace DuckGame
                 state2.buttons |= PadButton.LeftShoulder;
             if (state2.triggers.right > 0.5f)
                 state2.buttons |= PadButton.RightShoulder;
+            // A single Joy-Con pauses with + or -, like the console's own games, not with the stick click.
+            if (IsSingleJoyCon(index))
+            {
+                bool start = (state2.buttons & PadButton.Start) != 0, back = (state2.buttons & PadButton.Back) != 0;
+                state2.buttons &= ~(PadButton.Start | PadButton.Back);
+                if (back)
+                    state2.buttons |= PadButton.Start;
+                if (start)
+                    state2.buttons |= PadButton.Back;
+            }
 #endif
             _connectedState = state1.IsConnected;
             return state2;

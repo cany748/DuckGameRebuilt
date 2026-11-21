@@ -5,7 +5,7 @@ namespace DuckGame
 {
     public class SwitchProController : JoyConBase
     {
-        private static readonly Dictionary<int, Sprite> _proControllerImages = new Dictionary<int, Sprite>()
+        internal static readonly Dictionary<int, Sprite> _proControllerImages = new Dictionary<int, Sprite>()
     {
       {
         4096,

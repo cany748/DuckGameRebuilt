@@ -829,7 +829,11 @@ namespace DuckGame
                                 _doorIcon.frame = 10;
                                 Graphics.Draw(_doorIcon, (int)x + 57, y + 31f);
                                 _fontSmall.DrawOutline("PRESS", new Vec2(x + 19f, y + 40f), Color.White, Colors.BlueGray, doorLeftBlank.depth + 10);
+#if SWITCH
+                                _fontSmall.DrawOutline("L+R", new Vec2(x + 85f, y + 40f), Color.White, Colors.BlueGray, doorRightBlank.depth + 10);
+#else
                                 _fontSmall.DrawOutline(Triggers.Start, new Vec2(x + 85f, y + 40f), Color.White, Colors.BlueGray, doorRightBlank.depth + 10);
+#endif
                             }
                             else if (flag2)
                             {
@@ -935,7 +939,11 @@ namespace DuckGame
                                 _doorIcon.frame = 10;
                                 Graphics.Draw(_doorIcon, (int)x + 58, y + 31f);
                                 _fontSmall.DrawOutline("PRESS", new Vec2(x + 20f, y + 40f), Color.White, Colors.BlueGray, doorLeftBlank.depth + 10);
+#if SWITCH
+                                _fontSmall.DrawOutline("L+R", new Vec2(x + 86f, y + 40f), Color.White, Colors.BlueGray, doorRightBlank.depth + 10);
+#else
                                 _fontSmall.DrawOutline(Triggers.Start, new Vec2(x + 86f, y + 40f), Color.White, Colors.BlueGray, doorRightBlank.depth + 10);
+#endif
                             }
                             else if (flag2)
                             {
