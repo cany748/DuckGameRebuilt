@@ -1870,26 +1870,14 @@ namespace DuckGame
             //        return (T)(object)dynamicObject;
             //}
             //return _things.HasStaticObjects(key) ? _things.quadTree.CheckRectangle<T>(p1, p2, ignore) : default(T);
-            foreach (Thing thing in things.CollisionRectAll(p1, p2, typeof(T)))
-            {
-                if (!thing.removeFromLevel && thing != ignore && Collision.Rect(p1, p2, thing))
-                {
-                    return (T)(object)thing;
-                }
-            }
-            return default(T);
+            Thing thing = things.CollisionRectFirst(p1, p2, typeof(T), ignore);
+            return thing == null ? default(T) : (T)(object)thing;
         }
 
         public T CollisionRect<T>(Vec2 p1, Vec2 p2)
         {
-            foreach (Thing thing in things.CollisionRectAll(p1, p2, typeof(T)))
-            {
-                if (!thing.removeFromLevel && Collision.Rect(p1, p2, thing))
-                {
-                    return (T)(object)thing;
-                }
-            }
-            return default(T);
+            Thing thing = things.CollisionRectFirst(p1, p2, typeof(T), null);
+            return thing == null ? default(T) : (T)(object)thing;
             //System.Type key = typeof(T);
             //foreach (Thing dynamicObject in _things.GetDynamicObjects(key))
             //{

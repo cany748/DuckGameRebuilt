@@ -1410,6 +1410,44 @@ namespace DuckGame
 
         public float bottomLocal => collisionOffset.y + collisionSize.y;
 
+        // Collision.Rect and Collision.Point with the bounds computed exactly as top/bottom/left/right do,
+        // inlined: these run for every candidate of every collision query.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal bool OverlapsRect(Vec2 tl, Vec2 br)
+        {
+            float t = position.y + _collisionOffset.y;
+            float l, r;
+            if (offDir <= 0)
+            {
+                l = position.x - _collisionSize.x - _collisionOffset.x;
+                r = position.x - _collisionOffset.x;
+            }
+            else
+            {
+                l = position.x + _collisionOffset.x;
+                r = l + _collisionSize.x;
+            }
+            return br.y >= t && tl.y <= t + _collisionSize.y && tl.x <= r && br.x >= l;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal bool ContainsPoint(Vec2 point)
+        {
+            float t = position.y + _collisionOffset.y;
+            float l, r;
+            if (offDir <= 0)
+            {
+                l = position.x - _collisionSize.x - _collisionOffset.x;
+                r = position.x - _collisionOffset.x;
+            }
+            else
+            {
+                l = position.x + _collisionOffset.x;
+                r = l + _collisionSize.x;
+            }
+            return point.x >= l && point.x <= r && point.y >= t && point.y <= t + _collisionSize.y;
+        }
+
         public float top
         {
             get => position.y + _collisionOffset.y;
