@@ -242,24 +242,89 @@ namespace DuckGame
 
 
 
-        // The depths in use this batch. A plain array with its own sort: List<float>.Sort() goes through
-        // shared generic code under Mono AOT, which made sorting a few dozen floats a visible cost.
-        // Same order as Array.Sort: NaN first, then ascending.
+        // The depths in use this batch with their item lists. Plain arrays with their own sort and lookup:
+        // List<float>.Sort() and Dictionary<float, T> go through shared generic code under Mono AOT, which
+        // made them a visible cost. Same order as Array.Sort: NaN first, then ascending. The lookup matches
+        // depths as float.Equals does: all NaNs are one key, and so are 0 and -0.
         private sealed class DepthKeys
         {
             private float[] _values = new float[64];
+            private DepthList[] _lists = new DepthList[64];
             public int Count;
+
+            private int[] _slotKeys = new int[256];
+            private DepthList[] _slotLists = new DepthList[256];
 
             public float this[int index] => _values[index];
 
-            public void Add(float value)
+            public DepthList ListAt(int index) => _lists[index];
+
+            private static unsafe int KeyBits(float value)
             {
-                if (Count == _values.Length)
-                    Array.Resize(ref _values, Count * 2);
-                _values[Count++] = value;
+                if (float.IsNaN(value))
+                    return 0x7FC00000;
+                if (value == 0f)
+                    return 0;
+                return *(int*)&value;
             }
 
-            public void Clear() => Count = 0;
+            public DepthList Find(float value)
+            {
+                int bits = KeyBits(value);
+                int mask = _slotKeys.Length - 1;
+                int slot = (int)((uint)(bits * -1640531535) >> 16) & mask;
+                while (true)
+                {
+                    DepthList list = _slotLists[slot];
+                    if (list == null)
+                        return null;
+                    if (_slotKeys[slot] == bits)
+                        return list;
+                    slot = (slot + 1) & mask;
+                }
+            }
+
+            private void Insert(int bits, DepthList list)
+            {
+                int mask = _slotKeys.Length - 1;
+                int slot = (int)((uint)(bits * -1640531535) >> 16) & mask;
+                while (_slotLists[slot] != null)
+                    slot = (slot + 1) & mask;
+                _slotKeys[slot] = bits;
+                _slotLists[slot] = list;
+            }
+
+            public void Add(float value, DepthList list)
+            {
+                if (Count == _values.Length)
+                {
+                    Array.Resize(ref _values, Count * 2);
+                    Array.Resize(ref _lists, Count * 2);
+                }
+                _values[Count] = value;
+                _lists[Count] = list;
+                Count++;
+                if (Count * 2 > _slotKeys.Length)
+                {
+                    _slotKeys = new int[_slotKeys.Length * 2];
+                    _slotLists = new DepthList[_slotLists.Length * 2];
+                    for (int i = 0; i < Count; i++)
+                        Insert(KeyBits(_values[i]), _lists[i]);
+                }
+                else
+                    Insert(KeyBits(value), list);
+            }
+
+            public void Clear()
+            {
+                DepthList[] lists = _lists;
+                for (int i = 0; i < Count; i++)
+                    lists[i] = null;
+                DepthList[] slots = _slotLists;
+                for (int i = 0; i < slots.Length; i++)
+                    slots[i] = null;
+                Count = 0;
+            }
 
             public void Sort() => Sort(0, Count - 1);
 
@@ -283,6 +348,9 @@ namespace DuckGame
                             float swap = values[i];
                             values[i] = values[j];
                             values[j] = swap;
+                            DepthList swapList = _lists[i];
+                            _lists[i] = _lists[j];
+                            _lists[j] = swapList;
                             i++;
                             j--;
                         }
@@ -301,13 +369,16 @@ namespace DuckGame
                 for (int i = low + 1; i <= high; i++)
                 {
                     float value = values[i];
+                    DepthList list = _lists[i];
                     int j = i - 1;
                     while (j >= low && Less(value, values[j]))
                     {
                         values[j + 1] = values[j];
+                        _lists[j + 1] = _lists[j];
                         j--;
                     }
                     values[j + 1] = value;
+                    _lists[j + 1] = list;
                 }
             }
         }
@@ -330,7 +401,9 @@ namespace DuckGame
 
             public void Clear()
             {
-                Array.Clear(Items, 0, Count);
+                MTSpriteBatchItem[] items = Items;
+                for (int i = 0; i < Count; i++)
+                    items[i] = null;
                 Count = 0;
             }
         }
@@ -377,10 +450,11 @@ namespace DuckGame
         {
             if (_lastDepthList != null && depth == _lastDepth)
                 return _lastDepthList;
-            if (!_batchItemListv2.TryGetValue(depth, out DepthList list))
+            DepthList list = keys.Find(depth);
+            if (list == null)
             {
-                keys.Add(depth);
                 list = NewDepthList();
+                keys.Add(depth, list);
                 _batchItemListv2.Add(depth, list);
             }
             _lastDepth = depth;
@@ -392,7 +466,7 @@ namespace DuckGame
         {
             for (int i = 0; i < keys.Count; i++)
             {
-                DepthList items = _batchItemListv2[keys[i]];
+                DepthList items = keys.ListAt(i);
                 for (int j = 0; j < items.Count; j++)
                 {
                     MTSpriteBatchItem item = items.Items[j];
@@ -711,7 +785,7 @@ namespace DuckGame
             int keyindex = 0;
             int index1 = 0;
             int numBatchItems;
-            DepthList mTSpriteBatchItems = _batchItemListv2[keys[keyindex]];
+            DepthList mTSpriteBatchItems = keys.ListAt(keyindex);
             for (int count = batchlistCount; count > 0; count -= numBatchItems)
             {
                 int start = 0;
@@ -730,7 +804,7 @@ namespace DuckGame
                     {
                         index1 = 0;
                         keyindex += 1;
-                        mTSpriteBatchItems = _batchItemListv2[keys[keyindex]];
+                        mTSpriteBatchItems = keys.ListAt(keyindex);
                     }
                     MTSpriteBatchItem batchItem = mTSpriteBatchItems.Items[index1];
                     if (batchItem.Texture != texture2D || (batchItem.Material != null && batchItem.NormalTexture != Realtex2D) || batchItem.Material != material)//(batchItem.Texture != texture2D ? 1 : (batchItem.Material != material ? 1 : 0)) != 0
