@@ -55,14 +55,33 @@ namespace DuckGame
         }
         public override object nativeObject => _base;
 
+        // _base.Width/Height cached for the Switch build: read for every sprite drawn, and a texture never
+        // changes size.
+        private int _baseWidth = -1;
+        private int _baseHeight = -1;
+
+        private void SetBase(Texture2D tex)
+        {
+            _base = tex;
+            _baseWidth = tex == null ? -1 : tex.Width;
+            _baseHeight = tex == null ? -1 : tex.Height;
+        }
+
+#if SWITCH
+        public override int width => _base == null ? -1 : _baseWidth;
+
+        public override int height => _base == null ? -1 : _baseHeight;
+#else
+        // Desktop mods may set _base themselves.
         public override int width => _base == null ? -1 : _base.Width;
 
         public override int height => _base == null ? -1 : _base.Height;
+#endif
 
         internal Tex2D(Texture2D tex, string texName, short curTexIndex = 0)
           : base(texName, curTexIndex)
         {
-            _base = tex;
+            SetBase(tex);
             _frameWidth = tex.Width;
             _frameHeight = tex.Height;
         }
@@ -70,7 +89,7 @@ namespace DuckGame
         public Tex2D(int width, int height)
           : base("__internal", 0)
         {
-            _base = new Texture2D(Graphics.device, width, height, false, SurfaceFormat.Color);
+            SetBase(new Texture2D(Graphics.device, width, height, false, SurfaceFormat.Color));
             _frameWidth = width;
             _frameHeight = height;
             Content.AssignTextureIndex(this);
@@ -136,7 +155,7 @@ namespace DuckGame
                 lock (Graphics.objectsToDispose)
                     Graphics.objectsToDispose.Add(_base);
             }
-            _base = null;
+            SetBase(null);
         }
 
         public static implicit operator Texture2D(Tex2D tex) => tex._base;

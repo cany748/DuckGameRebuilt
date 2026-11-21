@@ -295,10 +295,7 @@ namespace DuckGame
         public static implicit operator Microsoft.Xna.Framework.Color(Color c) // faster, the old way used to convert the existing byte to int then do some checks to make them bytes again, this is called alot so i make faster
         {
             Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color();
-            color.R = c.r;
-            color.G = c.g;
-            color.B = c.b;
-            color.A = c.a;
+            color.PackedValue = c.r | (uint)c.g << 8 | (uint)c.b << 16 | (uint)c.a << 24;
             return color;
         }
 
