@@ -395,24 +395,52 @@ namespace DuckGame
 
         // The items of one depth, in the order they were drawn. A plain array: List<T> indexing goes through
         // shared generic code under Mono AOT, and DrawBatch reads every item through it.
+        // An item reference wrapped in a struct: storing it into an array of these skips the array covariance
+        // check that a store into MTSpriteBatchItem[] makes through a runtime helper under Mono.
+        private struct ItemSlot
+        {
+            public MTSpriteBatchItem Item;
+        }
+
         private sealed class DepthList
         {
-            public MTSpriteBatchItem[] Items = new MTSpriteBatchItem[16];
+            public ItemSlot[] Items = new ItemSlot[16];
             public int Count;
 
             public void Add(MTSpriteBatchItem item)
             {
                 if (Count == Items.Length)
                     Array.Resize(ref Items, Count * 2);
-                Items[Count++] = item;
+                Items[Count++].Item = item;
             }
 
             public void Clear()
             {
-                MTSpriteBatchItem[] items = Items;
+                ItemSlot[] items = Items;
                 for (int i = 0; i < Count; i++)
-                    items[i] = null;
+                    items[i].Item = null;
                 Count = 0;
+            }
+        }
+
+        // Stack<MTSpriteBatchItem> without the covariance checks: same last-in, first-out order.
+        private sealed class ItemPool
+        {
+            private ItemSlot[] _items = new ItemSlot[1024];
+            public int Count;
+
+            public void Push(MTSpriteBatchItem item)
+            {
+                if (Count == _items.Length)
+                    Array.Resize(ref _items, Count * 2);
+                _items[Count++].Item = item;
+            }
+
+            public MTSpriteBatchItem Pop()
+            {
+                MTSpriteBatchItem item = _items[--Count].Item;
+                _items[Count].Item = null;
+                return item;
             }
         }
 
@@ -447,7 +475,7 @@ namespace DuckGame
         // A frame draws thousands of sprites; their items and the per-depth lists are reused instead of
         // being left to the garbage collector. Items kept by a sprite, and items a material may still
         // look at after the batch, stay out of the pool.
-        private readonly Stack<MTSpriteBatchItem> _freeItems = new Stack<MTSpriteBatchItem>(1024);
+        private readonly ItemPool _freeItems = new ItemPool();
         private readonly Stack<DepthList> _freeDepthLists = new Stack<DepthList>(64);
 
         private DepthList NewDepthList() => _freeDepthLists.Count > 0 ? _freeDepthLists.Pop() : new DepthList();
@@ -477,7 +505,7 @@ namespace DuckGame
                 DepthList items = keys.ListAt(i);
                 for (int j = 0; j < items.Count; j++)
                 {
-                    MTSpriteBatchItem item = items.Items[j];
+                    MTSpriteBatchItem item = items.Items[j].Item;
                     if (item.retained || item.Material != null)
                         continue;
                     item.Reset();
@@ -507,7 +535,7 @@ namespace DuckGame
             {
                 for (int i = 0; i < depthcolleciton.Count; i++)
                 {
-                    yield return depthcolleciton.Items[i];
+                    yield return depthcolleciton.Items[i].Item;
                 }
             }
         }
@@ -814,7 +842,7 @@ namespace DuckGame
                         keyindex += 1;
                         mTSpriteBatchItems = keys.ListAt(keyindex);
                     }
-                    MTSpriteBatchItem batchItem = mTSpriteBatchItems.Items[index1];
+                    MTSpriteBatchItem batchItem = mTSpriteBatchItems.Items[index1].Item;
                     if (batchItem.Texture != texture2D || (batchItem.Material != null && batchItem.NormalTexture != Realtex2D) || batchItem.Material != material)//(batchItem.Texture != texture2D ? 1 : (batchItem.Material != material ? 1 : 0)) != 0
                     {
                         FlushVertexArray(start, end);
