@@ -68,6 +68,9 @@ DGR's own crash log is `/switch/DuckGame/game/ducklog.txt`, saves live in `/swit
 - SDL2 on Switch allows a single audio device, so music is streamed through
   `DynamicSoundEffectInstance` instead of FNA's `MediaPlayer`.
 - Unix domain sockets are rejected in the P/Invoke shim (Horizon has none).
+- `build.sh` runs `Switch/tools/SuppressGCTransition` on the published FNA.dll: FNA3D's per-draw P/Invokes
+  get `[SuppressGCTransition]`, so Mono skips the GC-safe switch (and its stack copy) around each of them.
+  Only short calls that never wait or call back into managed code are on its list.
 
 ## Release framework
 
@@ -136,6 +139,9 @@ While it runs, every drawn frame gets exactly one update and drawing uses its ow
 - `-perfscan` measures every custom level for 300 frames instead, to find the heavy ones.
 - `-perfscene a,b` runs only the named scenes.
 - `-perfprofile` samples the main thread during the measured part and writes `profile-<scene>.txt` next to the nro.
+  With `-perfprofileslow=<ms>` only frames whose update + draw took longer are kept. In Ryujinx the sampled
+  program counter lags behind (it is updated per translated block), so trust the inclusive section there more
+  than the self one.
 - `-perfalloc` (desktop runtime) prints `ALLOC` lines: megabytes allocated per type.
 
 Results are tracked in `docs/perf/baseline.md`.
