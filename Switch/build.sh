@@ -18,6 +18,7 @@ OUT="$ROOT/Switch/out/sd/switch/DuckGame"
 
 echo "== managed game"
 "$DOTNET" publish "$ROOT/Switch/DuckGame.Switch/DuckGame.Switch.csproj" -c Release -o "$ROOT/Switch/out/managed" --nologo -v q
+"$DOTNET" run -c Release --project "$ROOT/Switch/tools/SuppressGCTransition" -- "$ROOT/Switch/out/managed/FNA.dll"
 
 SDK_LIB="$MONO_NX_SDK/dotnet_runtime/artifacts/bin/mono/libnx.arm64.Debug"
 SDK_FRAMEWORK="$MONO_NX_SDK/dotnet_runtime/artifacts/bin/runtime/net9.0-libnx-Debug-arm64"

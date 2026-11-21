@@ -460,7 +460,7 @@ namespace DuckGame
                     {
                         if (output.TryGetValue(hashcode, out List<Thing> output2))
                         {
-                            output2.Remove(thing);
+                            RemoveFromCell(output2, thing);
                         }
                         else
                         {
@@ -470,7 +470,7 @@ namespace DuckGame
                     }
                     if (output.TryGetValue(ThingHashCode, out List<Thing> output3))
                     {
-                        output[ThingHashCode].Remove(thing);
+                        RemoveFromCell(output[ThingHashCode], thing);
                     }
                     continue;
                 }
@@ -550,6 +550,24 @@ namespace DuckGame
 
 
         }
+        // List.Remove compares through EqualityComparer<Thing>, a virtual Equals call per element under
+        // Mono AOT. No Thing overrides Equals and the Switch build loads no mods, so identity is the same test.
+        private static void RemoveFromCell(List<Thing> cell, Thing thing)
+        {
+#if SWITCH
+            for (int i = 0; i < cell.Count; i++)
+            {
+                if (ReferenceEquals(cell[i], thing))
+                {
+                    cell.RemoveAt(i);
+                    return;
+                }
+            }
+#else
+            cell.Remove(thing);
+#endif
+        }
+
         // Hash keys of a type's base types (Editor.AllBaseTypes), in the same order, computed once per type.
         private static readonly Dictionary<Type, int[]> BaseTypeKeys = new Dictionary<Type, int[]>();
 
@@ -842,13 +860,13 @@ namespace DuckGame
                     {
                         if (output.TryGetValue(hashcode, out List<Thing> output2))
                         {
-                            output2.Remove(thing);
+                            RemoveFromCell(output2, thing);
                         }
                         //_allObjectsByType.Add(key, obj);
                     }
                     if (output.TryGetValue(typeof(Thing).GetHashCode(), out List<Thing> output3))
                     {
-                        output3.Remove(thing);
+                        RemoveFromCell(output3, thing);
                     }
                     //output.Remove(thing);
                 }
