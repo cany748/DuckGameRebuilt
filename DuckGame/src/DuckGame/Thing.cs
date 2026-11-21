@@ -696,7 +696,13 @@ namespace DuckGame
 
         public virtual Vec2 anchorPosition => position;
 
+#if SWITCH
+        // Nothing overrides it, and the Switch build loads no mods: non-virtual, so the collision code's
+        // left/right (two reads per test) compile to plain field reads.
+        public sbyte offDir
+#else
         public virtual sbyte offDir
+#endif
         {
             get => _offDir;
             set => _offDir = value;

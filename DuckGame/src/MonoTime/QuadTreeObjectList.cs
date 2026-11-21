@@ -493,6 +493,29 @@ namespace DuckGame
 
 
         }
+        // Hash keys of a type's base types (Editor.AllBaseTypes), in the same order, computed once per type.
+        private static readonly Dictionary<Type, int[]> BaseTypeKeys = new Dictionary<Type, int[]>();
+
+        private static Dictionary<Type, List<Type>> _baseTypeKeysSource;
+
+        private static int[] GetBaseTypeKeys(Type type)
+        {
+            if (_baseTypeKeysSource != Editor.AllBaseTypes)
+            {
+                BaseTypeKeys.Clear();
+                _baseTypeKeysSource = Editor.AllBaseTypes;
+            }
+            if (!BaseTypeKeys.TryGetValue(type, out int[] keys))
+            {
+                List<Type> baseTypes = Editor.AllBaseTypes[type];
+                keys = new int[baseTypes.Count];
+                for (int i = 0; i < keys.Length; i++)
+                    keys[i] = baseTypes[i].GetHashCode();
+                BaseTypeKeys[type] = keys;
+            }
+            return keys;
+        }
+
         public void RegisterObject(Thing thing)
         {
             //if (thing.position == Vec2.Zero)
@@ -507,14 +530,14 @@ namespace DuckGame
 
             thing.Buckets = GetIdForObjThing(thing.topLeft, thing.bottomRight); // float size = Math.Max(Math.Max(thing.right - thing.left, thing.bottom - thing.top), 16);
             thing.oldposition = thing.position;
+            int[] baseTypeKeys = GetBaseTypeKeys(thing.GetType());
+            int thingKey = typeof(Thing).GetHashCode();
             foreach (Vec2 item in thing.Buckets)
             {
                 if (Buckets.TryGetValue(item, out Dictionary<int, List<Thing>> TypeList))
                 {
-                    foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                    foreach (int hashcode in baseTypeKeys)
                     {
-                        //output[key].Add(thing);
-                        int hashcode = key.GetHashCode();
                         if (TypeList.TryGetValue(hashcode, out List<Thing> ThingsWithin))
                         {
                             ThingsWithin.Add(thing);
@@ -523,17 +546,14 @@ namespace DuckGame
                         {
                             TypeList[hashcode] = new List<Thing>() { thing };
                         }
-                        //_allObjectsByType.Add(key, obj);
                     }
-                    TypeList[typeof(Thing).GetHashCode()].Add(thing);
+                    TypeList[thingKey].Add(thing);
                     continue;
                 }
                 TypeList = new Dictionary<int, List<Thing>>();
-                TypeList[typeof(Thing).GetHashCode()] = new List<Thing>() { thing };
-                foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                TypeList[thingKey] = new List<Thing>() { thing };
+                foreach (int hashcode in baseTypeKeys)
                 {
-                    //output[key].Add(thing);
-                    int hashcode = key.GetHashCode();
                     if (TypeList.TryGetValue(hashcode, out List<Thing> ThingsWithin))
                     {
                         ThingsWithin.Add(thing);
@@ -542,28 +562,8 @@ namespace DuckGame
                     {
                         TypeList[hashcode] = new List<Thing>() { thing };
                     }
-
-                    //_allObjectsByType.Add(key, obj);
                 }
-                //if (!MostAssigned)
-                //{
-                //    MostAssigned = true;
-                //    TopLeftMost = item;
-                //    BottomRightMost = item;
-                //}
-                //else
-                //{
-                //    if (item.x < TopLeftMost.x)
-                //        TopLeftMost.x = item.x;
-                //    if (item.y > TopLeftMost.y)
-                //        TopLeftMost.y = item.y;
-                //    if (item.x > BottomRightMost.x)
-                //        BottomRightMost.x = item.x;
-                //    if (item.y < BottomRightMost.y)
-                //        BottomRightMost.y = item.y;
-                //}
                 Buckets[item] = TypeList;
-                //Console.WriteLine(item);
             }
         }
         // HashSet<int> objects;
