@@ -254,6 +254,7 @@ namespace DuckGame
 
             private int[] _slotKeys = new int[256];
             private DepthList[] _slotLists = new DepthList[256];
+            private int[] _usedSlots = new int[64];
 
             public float this[int index] => _values[index];
 
@@ -292,6 +293,7 @@ namespace DuckGame
                     slot = (slot + 1) & mask;
                 _slotKeys[slot] = bits;
                 _slotLists[slot] = list;
+                _usedSlots[Count - 1] = slot;
             }
 
             public void Add(float value, DepthList list)
@@ -300,6 +302,7 @@ namespace DuckGame
                 {
                     Array.Resize(ref _values, Count * 2);
                     Array.Resize(ref _lists, Count * 2);
+                    Array.Resize(ref _usedSlots, Count * 2);
                 }
                 _values[Count] = value;
                 _lists[Count] = list;
@@ -308,8 +311,12 @@ namespace DuckGame
                 {
                     _slotKeys = new int[_slotKeys.Length * 2];
                     _slotLists = new DepthList[_slotLists.Length * 2];
-                    for (int i = 0; i < Count; i++)
+                    int count = Count;
+                    for (int i = 0; i < count; i++)
+                    {
+                        Count = i + 1;
                         Insert(KeyBits(_values[i]), _lists[i]);
+                    }
                 }
                 else
                     Insert(KeyBits(value), list);
@@ -321,8 +328,9 @@ namespace DuckGame
                 for (int i = 0; i < Count; i++)
                     lists[i] = null;
                 DepthList[] slots = _slotLists;
-                for (int i = 0; i < slots.Length; i++)
-                    slots[i] = null;
+                int[] used = _usedSlots;
+                for (int i = 0; i < Count; i++)
+                    slots[used[i]] = null;
                 Count = 0;
             }
 

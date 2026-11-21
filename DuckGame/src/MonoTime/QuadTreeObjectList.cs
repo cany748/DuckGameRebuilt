@@ -405,14 +405,13 @@ namespace DuckGame
                 return;
             }
             int ThingHashCode = typeof(Thing).GetHashCode();
+            int[] baseTypeKeys = GetBaseTypeKeys(thing.GetType());
             foreach (Vec2 item in thing.Buckets)
             {
                 if (Buckets.TryGetValue(item, out Dictionary<int, List<Thing>> output))
                 {
-                    foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                    foreach (int hashcode in baseTypeKeys)
                     {
-                        //output[key].Add(thing);
-                        int hashcode = key.GetHashCode();
                         if (output.TryGetValue(hashcode, out List<Thing> output2))
                         {
                             output2.Remove(thing);
@@ -451,10 +450,8 @@ namespace DuckGame
             {
                 if (Buckets.TryGetValue(item, out Dictionary<int, List<Thing>> output))
                 {
-                    foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                    foreach (int hashcode in baseTypeKeys)
                     {
-                        //output[key].Add(thing);
-                        int hashcode = key.GetHashCode();
                         if (output.TryGetValue(hashcode, out List<Thing> output2))
                         {
                             output2.Add(thing);
@@ -471,10 +468,8 @@ namespace DuckGame
                 }
                 output = new Dictionary<int, List<Thing>>();
                 output[ThingHashCode] = new List<Thing>() { thing };
-                foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                foreach (int hashcode in baseTypeKeys)
                 {
-                    //output[key].Add(thing);
-                    int hashcode = key.GetHashCode();
                     if (output.TryGetValue(hashcode, out List<Thing> output2))
                     {
                         output2.Add(thing);
@@ -792,14 +787,14 @@ namespace DuckGame
             //float Length = Math.Abs(p1.x - p2.x);
             //float Height = Math.Abs(p1.y - p2.y);
             //float max = Math.Max(Length, Height);
+            int[] baseTypeKeys = GetBaseTypeKeys(thing.GetType());
             foreach (Vec2 item in thing.Buckets)
             {
                 if (Buckets.TryGetValue(item, out Dictionary<int, List<Thing>> output))
                 {
-                    foreach (Type key in Editor.AllBaseTypes[thing.GetType()])
+                    foreach (int hashcode in baseTypeKeys)
                     {
-
-                        if (output.TryGetValue(key.GetHashCode(), out List<Thing> output2))
+                        if (output.TryGetValue(hashcode, out List<Thing> output2))
                         {
                             output2.Remove(thing);
                         }
