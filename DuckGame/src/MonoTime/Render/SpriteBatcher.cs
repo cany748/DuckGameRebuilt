@@ -334,9 +334,23 @@ namespace DuckGame
                 Count = 0;
             }
 
-            public void Sort() => Sort(0, Count - 1);
+            // The keys are distinct, so every correct sort gives the same order. About half of the batches
+            // arrive in order already.
+            public void Sort()
+            {
+                float[] values = _values;
+                for (int i = 1; i < Count; i++)
+                {
+                    if (Less(values[i], values[i - 1]))
+                    {
+                        Sort(0, Count - 1);
+                        return;
+                    }
+                }
+            }
 
-            private static bool Less(float a, float b) => a < b || (float.IsNaN(a) && !float.IsNaN(b));
+            // x != x is IsNaN, which isn't inlined across assemblies under Mono AOT.
+            private static bool Less(float a, float b) => a < b || (a != a && b == b);
 
             private void Sort(int low, int high)
             {
