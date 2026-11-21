@@ -24,7 +24,11 @@ namespace DuckGame
         public HashSet<Thing> RealupdateList = new HashSet<Thing>();
         public HashSet<Thing> updateList => _bigList;
 
-        public void RandomizeObjectOrder() => _bigList = new HashSet<Thing>(_bigList.OrderBy(x => Rando.Int(999999)).ToList());
+        public void RandomizeObjectOrder()
+        {
+            _bigList = new HashSet<Thing>(_bigList.OrderBy(x => Rando.Int(999999)).ToList());
+            _dynamicSnapshots.Clear();
+        }
 
         public QuadTree quadTree => _quadTree;
 
@@ -123,12 +127,23 @@ namespace DuckGame
             return _allObjectsByType.TryGetValue(typeof(T), out list) ? list.Count : 0;
         }
 
-        public HashSet<Thing> GetDynamicObjects(Type key)
+        // Collision queries scan these sets many times per frame and the sets change only in RefreshState,
+        // so they are handed out as arrays in the sets' enumeration order, rebuilt after a change.
+        private readonly Dictionary<Type, Thing[]> _dynamicSnapshots = new Dictionary<Type, Thing[]>();
+
+        public Thing[] GetDynamicObjects(Type key)
         {
-            if (key == typeof(Thing))
-                return _bigList;
+            if (_dynamicSnapshots.TryGetValue(key, out Thing[] snapshot))
+                return snapshot;
             HashSet<Thing> list;
-            return _objectsByType.TryGetValue(key, out list) ? list : _emptyList;
+            if (key == typeof(Thing))
+                list = _bigList;
+            else if (!_objectsByType.TryGetValue(key, out list))
+                list = _emptyList;
+            snapshot = new Thing[list.Count];
+            list.CopyTo(snapshot);
+            _dynamicSnapshots[key] = snapshot;
+            return snapshot;
         }
 
         public HashSet<Thing> GetStaticObjects(Type key)
@@ -182,6 +197,7 @@ namespace DuckGame
             _bigList.Clear();
             _addThings.Clear();
             _objectsByType.Clear();
+            _dynamicSnapshots.Clear();
             _staticObjectsByType.Clear();
             _quadTree.Clear();
             _allObjectsByType.Clear();
@@ -824,7 +840,8 @@ namespace DuckGame
                     removeItem(_objectsByType, removeThing);
                 RemoveUpdateList(removeThing);
                 RemoveDan(removeThing);
-                _bigList.Remove(removeThing);
+                if (_bigList.Remove(removeThing))
+                    _dynamicSnapshots.Remove(typeof(Thing));
                 objectsDirty = true;
             }
             _removeThings.Clear();
@@ -835,6 +852,7 @@ namespace DuckGame
                 {
                     RegisterObject(addThing);
                     _bigList.Add(addThing);
+                    _dynamicSnapshots.Remove(typeof(Thing));
                 }
                 addThing.level = Level.current;
                 if (addThing is IDontMove && _useTree)
@@ -855,6 +873,8 @@ namespace DuckGame
             {
                 list.Add(key, obj);
                 _allObjectsByType.Add(key, obj);
+                if (list == _objectsByType)
+                    _dynamicSnapshots.Remove(key);
             }
         }
 
@@ -864,6 +884,8 @@ namespace DuckGame
             {
                 list.Remove(key, obj);
                 _allObjectsByType.Remove(key, obj);
+                if (list == _objectsByType)
+                    _dynamicSnapshots.Remove(key);
             }
         }
 
