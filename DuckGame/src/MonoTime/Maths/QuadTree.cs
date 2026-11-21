@@ -58,7 +58,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[pType])
+                    foreach (Thing t in quadTree._objects.Items(pType))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Point(pos, t))
                             return t;
@@ -87,7 +87,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Point(pos, t))
                             return (T)(object)t;
@@ -116,7 +116,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Point(pos, t))
                             return (T)(object)t;
@@ -145,7 +145,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Point(pos, t) && pFilter(t))
                             return (T)(object)t;
@@ -174,7 +174,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Point(pos, t))
                             return (T)(object)t;
@@ -202,7 +202,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[typer])
+                    foreach (Thing t in quadTree._objects.Items(typer))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Point(pos, t))
                             return t;
@@ -230,7 +230,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[typer])
+                    foreach (Thing t in quadTree._objects.Items(typer))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Point(pos, t))
                             return t;
@@ -258,7 +258,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[typer])
+                    foreach (Thing t in quadTree._objects.Items(typer))
                     {
                         if (!t.removeFromLevel && Collision.Point(pos, t))
                             return t;
@@ -287,7 +287,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.placementLayer) && Collision.Point(pos, t))
                             return (T)(object)t;
@@ -316,7 +316,7 @@ namespace DuckGame
             {
                 if (!quadTree._split)
                 {
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && filter(t) && Collision.Point(pos, t))
                             return (T)(object)t;
@@ -346,7 +346,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Line(p1, p2, t))
                             return (T)(object)t;
@@ -374,7 +374,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Line(p1, p2, t))
                             return (T)(object)t;
@@ -402,7 +402,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Line(p1, p2, t))
                             return (T)(object)t;
@@ -431,7 +431,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Line(p1, p2, t))
                             objList.Add((T)(object)t);
@@ -460,7 +460,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Line(p1, p2, t))
                             objList.Add((T)(object)t);
@@ -489,7 +489,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Line(p1, p2, t))
                             objList.Add((T)(object)t);
@@ -518,7 +518,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing thing in quadTree._objects[key])
+                    foreach (Thing thing in quadTree._objects.Items(key))
                     {
                         if (!thing.removeFromLevel && thing != ignore && (layer == null || layer == thing.layer))
                         {
@@ -554,7 +554,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing thing in quadTree._objects[key])
+                    foreach (Thing thing in quadTree._objects.Items(key))
                     {
                         if (!thing.removeFromLevel && thing != ignore)
                         {
@@ -590,7 +590,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing thing in quadTree._objects[key])
+                    foreach (Thing thing in quadTree._objects.Items(key))
                     {
                         if (!thing.removeFromLevel)
                         {
@@ -625,7 +625,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && (layer == null || layer == t.layer) && Collision.Rect(p1, p2, t) && filter((T)(object)t))
                             return (T)(object)t;
@@ -653,7 +653,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Rect(p1, p2, t) && filter((T)(object)t))
                             return (T)(object)t;
@@ -681,7 +681,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Rect(p1, p2, t))
                             return (T)(object)t;
@@ -709,7 +709,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Rect(p1, p2, t))
                             return (T)(object)t;
@@ -737,7 +737,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Rect(p1, p2, t))
                             return (T)(object)t;
@@ -765,7 +765,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Rect(p1, p2, t))
                             outList.Add((T)(object)t);
@@ -793,7 +793,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && (layer == null || layer == t.layer) && Collision.Circle(p1, radius, t))
                             return (T)(object)t;
@@ -821,7 +821,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && t != ignore && Collision.Circle(p1, radius, t))
                             return (T)(object)t;
@@ -849,7 +849,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Circle(p1, radius, t))
                             return (T)(object)t;
@@ -877,7 +877,7 @@ namespace DuckGame
                 if (!quadTree._split)
                 {
                     Type key = typeof(T);
-                    foreach (Thing t in quadTree._objects[key])
+                    foreach (Thing t in quadTree._objects.Items(key))
                     {
                         if (!t.removeFromLevel && Collision.Circle(p1, radius, t))
                             outList.Add((T)(object)t);

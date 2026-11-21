@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -63,6 +64,12 @@ namespace DuckGame
 
         [DllImport("__Internal")]
         private static extern void switch_profiler_stop([MarshalAs(UnmanagedType.LPUTF8Str)] string path);
+
+        [DllImport("__Internal")]
+        private static extern void switch_profiler_frame(int begin, int keep);
+
+        // -perfprofileslow=<ms> with -perfprofile: only frames whose update + draw took longer are sampled.
+        private static double _profileSlowMs;
 
         public static bool Enabled => _enabled ??= Program.commandLine.Contains("-perftest") || Program.commandLine.Contains("-perfscan");
 
@@ -248,6 +255,8 @@ namespace DuckGame
             // one update: a slow frame slows the game down instead of being caught up.
             Program.SetAccumulatedElapsedTime(Program.main, TimeSpan.Zero);
             Step();
+            if (_profile && _profileSlowMs > 0)
+                switch_profiler_frame(1, 0);
         }
 
         public static void DrawStart()
@@ -275,6 +284,8 @@ namespace DuckGame
             _updateRandom = null;
             double drawMs = Now - _drawStart;
             _drawStart = -1;
+            if (_profile && _profileSlowMs > 0)
+                switch_profiler_frame(0, _lastUpdateMs + drawMs > _profileSlowMs ? 1 : 0);
             if (!Measuring)
                 return;
             DrawMs.Add(drawMs);
@@ -378,6 +389,9 @@ namespace DuckGame
             }
             _profile = Program.commandLine.Contains("-perfprofile ") || Program.commandLine.EndsWith("-perfprofile");
             _profileLoad = Program.commandLine.Contains("-perfprofileload");
+            Match slow = Regex.Match(Program.commandLine, @"-perfprofileslow=([0-9.]+)");
+            if (slow.Success)
+                _profileSlowMs = double.Parse(slow.Groups[1].Value, CultureInfo.InvariantCulture);
             if (Program.commandLine.Contains("-gpufinish") && _native)
             {
                 int count = Scenes.Count;

@@ -120,6 +120,7 @@ void* getsym_Internal(const char *name)
     extern const char *switch_audio_error_step(void);
     extern void switch_gpu_finish(int on);
     extern int switch_npad_style(int index);
+    extern void switch_profiler_frame(int begin, int keep);
     if (strcmp(name, "switch_gpu_stats") == 0) return (void *)switch_gpu_stats;
     if (strcmp(name, "switch_audio_stats") == 0) return (void *)switch_audio_stats;
     if (strcmp(name, "switch_pin_worker_thread") == 0) return (void *)switch_pin_worker_thread;
@@ -128,6 +129,7 @@ void* getsym_Internal(const char *name)
     if (strcmp(name, "switch_audio_error_step") == 0) return (void *)switch_audio_error_step;
     if (strcmp(name, "switch_gpu_finish") == 0) return (void *)switch_gpu_finish;
     if (strcmp(name, "switch_npad_style") == 0) return (void *)switch_npad_style;
+    if (strcmp(name, "switch_profiler_frame") == 0) return (void *)switch_profiler_frame;
 
 	return NULL;
 }

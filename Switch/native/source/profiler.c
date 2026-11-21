@@ -35,6 +35,9 @@ extern char *mono_pmip(void *ip);
 static Sample *samples;
 static volatile int sample_count;
 static volatile bool running;
+/* switch_profiler_frame: the samples from frame_start on belong to the frame in progress. */
+static Mutex sample_lock;
+static int frame_start;
 static Handle target;
 static Thread sampler;
 
@@ -44,8 +47,12 @@ static void sample_loop(void *arg)
     while (running && sample_count < MAX_SAMPLES)
     {
         svcSleepThread(PERIOD_NS);
+        mutexLock(&sample_lock);
         if (R_FAILED(svcSetThreadActivity(target, ThreadActivity_Paused)))
+        {
+            mutexUnlock(&sample_lock);
             continue;
+        }
         ThreadContext context;
         Result result = svcGetThreadContext3(&context, target);
         svcSetThreadActivity(target, ThreadActivity_Runnable);
@@ -73,7 +80,21 @@ static void sample_loop(void *arg)
             }
             sample_count++;
         }
+        mutexUnlock(&sample_lock);
     }
+}
+
+/* Frame boundaries for profiling only slow frames: begin drops what was sampled since the last frame
+ * ended, end keeps or drops the samples of the frame. */
+void switch_profiler_frame(int begin, int keep)
+{
+    if (!running)
+        return;
+    mutexLock(&sample_lock);
+    if (begin || !keep)
+        sample_count = frame_start;
+    frame_start = sample_count;
+    mutexUnlock(&sample_lock);
 }
 
 /* Starts sampling the calling thread. */
@@ -85,7 +106,9 @@ int switch_profiler_start(void)
     if (samples == NULL)
         return 0;
     target = threadGetCurHandle();
+    mutexInit(&sample_lock);
     sample_count = 0;
+    frame_start = 0;
     running = true;
     if (R_FAILED(threadCreate(&sampler, sample_loop, NULL, NULL, SAMPLER_STACK, SAMPLER_PRIORITY, SAMPLER_CORE)) ||
         R_FAILED(threadStart(&sampler)))
