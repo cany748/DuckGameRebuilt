@@ -1070,6 +1070,9 @@ namespace DuckGame
                 MonoMain.pauseMenu = _updaterPromptMenu;
                 SFX.Play("pause", 0.6f);
             }
+#if SWITCH
+            SwitchSystem.SetLRAssignment(true);
+#endif
             
             base.Initialize();
         }

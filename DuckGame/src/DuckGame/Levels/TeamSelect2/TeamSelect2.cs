@@ -757,6 +757,9 @@ namespace DuckGame
             Global.Save();
             if (!Network.isActive)
                 Profiles.SaveActiveProfiles();
+#if SWITCH
+            SwitchSystem.SetLRAssignment(true);
+#endif
             if (!Network.isActive)
                 core.gameInProgress = false;
             DuckNetwork.inGame = false;
@@ -1719,6 +1722,9 @@ namespace DuckGame
                             if (!core.gameInProgress)
                                 Main.ResetMatchStuff();
                             Music.Stop();
+#if SWITCH
+                            SwitchSystem.SetLRAssignment(false);
+#endif
                             MonoMain.FinishLazyLoad();
                             if (_singlePlayer && !forcestart)
                             {

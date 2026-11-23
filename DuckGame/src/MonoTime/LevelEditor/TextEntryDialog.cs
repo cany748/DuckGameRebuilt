@@ -68,6 +68,16 @@ namespace DuckGame
             _startingText = startingText;
             result = null;
             opened = true;
+#if SWITCH
+            // The system keyboard, as in the original Switch release; it blocks until closed.
+            if (SwitchSystem.Keyboard(text, startingText, maxChars, true, out string entered))
+            {
+                Editor.enteringText = true;
+                Editor.PushFocus(this);
+                TextEntryComplete(entered);
+                return;
+            }
+#endif
             if (Steam.ShowOnscreenKeyboard(false, text, startingText, maxChars))
             {
                 Steam.TextEntryComplete += new Steam.TextEntryCompleteDelegate(TextEntryComplete);

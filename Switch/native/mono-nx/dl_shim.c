@@ -120,6 +120,11 @@ void* getsym_Internal(const char *name)
     extern const char *switch_audio_error_step(void);
     extern void switch_gpu_finish(int on);
     extern int switch_npad_style(int index);
+    extern float switch_sixaxis_angle(int index);
+    extern int switch_keyboard(const char *header, const char *initial, int max_length, int filename, char *out, int out_size);
+    extern void switch_controller_config(int max_players);
+    extern void switch_lr_assignment(int on);
+    extern int switch_account_name(char *out, int out_size);
     extern void switch_profiler_frame(int begin, int keep);
     if (strcmp(name, "switch_gpu_stats") == 0) return (void *)switch_gpu_stats;
     if (strcmp(name, "switch_audio_stats") == 0) return (void *)switch_audio_stats;
@@ -129,6 +134,11 @@ void* getsym_Internal(const char *name)
     if (strcmp(name, "switch_audio_error_step") == 0) return (void *)switch_audio_error_step;
     if (strcmp(name, "switch_gpu_finish") == 0) return (void *)switch_gpu_finish;
     if (strcmp(name, "switch_npad_style") == 0) return (void *)switch_npad_style;
+    if (strcmp(name, "switch_sixaxis_angle") == 0) return (void *)switch_sixaxis_angle;
+    if (strcmp(name, "switch_keyboard") == 0) return (void *)switch_keyboard;
+    if (strcmp(name, "switch_controller_config") == 0) return (void *)switch_controller_config;
+    if (strcmp(name, "switch_lr_assignment") == 0) return (void *)switch_lr_assignment;
+    if (strcmp(name, "switch_account_name") == 0) return (void *)switch_account_name;
     if (strcmp(name, "switch_profiler_frame") == 0) return (void *)switch_profiler_frame;
 
 	return NULL;

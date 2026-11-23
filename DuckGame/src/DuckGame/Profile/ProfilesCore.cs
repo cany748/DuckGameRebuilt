@@ -515,7 +515,11 @@ namespace DuckGame
                 return null;
             if (p.fileName != null)
                 return p.fileName;
+#if SWITCH
+            string name = p.rawName;
+#else
             string name = p.name;
+#endif
             if (p.steamID != 0UL)
             {
                 if (Steam.user == null || (long)p.steamID != (long)DG.localID)

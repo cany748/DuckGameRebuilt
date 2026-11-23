@@ -187,6 +187,9 @@ namespace DuckGame
             optionsMenu.Add(new UIMenuItemSlider("Rumble Intensity", field: new FieldBinding(Data, "rumbleIntensity"), step: 0.06666667f), true);
             optionsMenu.Add(new UIText(" ", Color.White), true);
             optionsMenu.Add(new UIMenuItemToggle("SHENANIGANS", field: new FieldBinding(Data, "shennanigans")), true);
+#if SWITCH
+            optionsMenu.Add(new UIMenuItem("SET CONTROLLERS", new UIMenuActionCallFunction(SwitchSystem.ShowControllerConfig)), true);
+#endif
             _lastCreatedDGRMenu = CreateDGRMenu(optionsMenu);
             _lastCreatedDGROptimizationsMenu = tempDGROptimizationsMenu;
             _lastCreatedDGRGraphicsMenu = tempDGRGraphicsMenu;

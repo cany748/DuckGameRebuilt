@@ -700,6 +700,12 @@ namespace DuckGame
             {
                 if (linkedProfile != null && connection == DuckNetwork.localConnection && !Profiles.IsExperience(this))
                     return linkedProfile.name;
+#if SWITCH
+                // The original Switch release shows the console user's nickname for the main profile. Only
+                // the shown name changes: the profile file and lookups go by rawName.
+                if (_name == "experience_profile" && this == Profiles.experienceProfile && SwitchSystem.AccountName != null)
+                    return SwitchSystem.AccountName;
+#endif
                 if (keepSetName || steamID == 0UL || slotType == SlotType.Local)
                     return _name;
                 if (Steam.user != null && (long)steamID == (long)Steam.user.id)

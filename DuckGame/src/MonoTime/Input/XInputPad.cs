@@ -31,6 +31,13 @@ namespace DuckGame
             }
         }
 
+        // Tilt raises the pitch of quacks and instruments, as with the original Switch release's controllers.
+        public override bool hasMotionAxis => NpadStyle(index) != 0;
+
+        public override float motionAxis => NpadStyle(index) != 0
+            ? (float)Math.Abs(Math.Sin(SwitchSystem.SixAxisAngle(index) * Math.PI * 2f))
+            : 0f;
+
         private static bool IsSingleJoyCon(int index)
         {
             int style = NpadStyle(index);
