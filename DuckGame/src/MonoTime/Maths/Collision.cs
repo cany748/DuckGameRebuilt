@@ -178,6 +178,8 @@ namespace DuckGame
 
         public static Vec2 LinePoint(Vec2 point1, Vec2 point2, Thing thing)
         {
+            if (thing.SegmentClearOf(point1, point2))
+                return Vec2.Zero;
             Vec2 vec2 = point2 - point1;
             float num1 = float.NegativeInfinity;
             float num2 = float.PositiveInfinity;

@@ -1430,6 +1430,31 @@ namespace DuckGame
             return br.y >= t && tl.y <= t + _collisionSize.y && tl.x <= r && br.x >= l;
         }
 
+        // For Collision.LinePoint: true when segment a-b stays more than a pixel away from the bounds on one
+        // axis, where LinePoint's clipping can only find no hit. Long or non-finite segments always say false.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal bool SegmentClearOf(Vec2 a, Vec2 b)
+        {
+            float dx = b.x - a.x, dy = b.y - a.y;
+            if (!(dx < 10000f && dx > -10000f && dy < 10000f && dy > -10000f) || a.x - a.x != 0f || a.y - a.y != 0f)
+                return false;
+            float t = position.y + _collisionOffset.y;
+            float l, r;
+            if (offDir <= 0)
+            {
+                l = position.x - _collisionSize.x - _collisionOffset.x;
+                r = position.x - _collisionOffset.x;
+            }
+            else
+            {
+                l = position.x + _collisionOffset.x;
+                r = l + _collisionSize.x;
+            }
+            float minX = dx < 0f ? b.x : a.x, maxX = dx < 0f ? a.x : b.x;
+            float minY = dy < 0f ? b.y : a.y, maxY = dy < 0f ? a.y : b.y;
+            return maxX < l - 1f || minX > r + 1f || maxY < t - 1f || minY > t + _collisionSize.y + 1f;
+        }
+
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         internal bool ContainsPoint(Vec2 point)
         {

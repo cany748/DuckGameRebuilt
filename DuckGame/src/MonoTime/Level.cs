@@ -1959,13 +1959,8 @@ namespace DuckGame
             {
                 return current.OldCollisionLine<T>(p1, p2);
             }
-            Type key = typeof(T);
-            foreach (Thing thing in things.CollisionLineAll(p1, p2, key))
-            {
-                if (!thing.removeFromLevel && Collision.Line(p1, p2, thing))
-                    return (T)(object)thing;
-            }
-            return default(T);
+            Thing hit = things.CollisionLineFirst(p1, p2, typeof(T));
+            return hit == null ? default(T) : (T)(object)hit;
         }
         public T OldCollisionLine<T>(Vec2 p1, Vec2 p2)
         {

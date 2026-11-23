@@ -365,6 +365,68 @@ namespace DuckGame
             }
         }
 
+        // The first thing GetThings(p1, p2, t) (the line cells) would yield that is still in the level and
+        // touches the segment (Level.CollisionLine), without the iterator and the cell array.
+        public Thing CollisionLineFirst(Vec2 p1, Vec2 p2, Type t)
+        {
+            int y0 = (int)((p2.y + offset) / cellsize);
+            int y1 = (int)((p1.y + offset) / cellsize);
+            int x0 = (int)((p2.x + offset) / cellsize);
+            int x1 = (int)((p1.x + offset) / cellsize);
+            int top = y1 < y0 ? y1 : y0;
+            int bottom = y0 < y1 ? y1 : y0;
+            int left = x1 < x0 ? x1 : x0;
+            int right = x0 < x1 ? x1 : x0;
+            if (LineLeniancy != 0)
+            {
+                top -= LineLeniancy;
+                bottom += LineLeniancy;
+                left -= LineLeniancy;
+                right += LineLeniancy;
+            }
+            int typekey = t.GetHashCode();
+            if (left == right && top == bottom)
+            {
+                if (Buckets.TryGetValue(new Vec2(left, top), out Dictionary<int, List<Thing>> cell) &&
+                    cell.TryGetValue(typekey, out List<Thing> cellThings))
+                {
+                    for (int i = 0; i < cellThings.Count; i++)
+                    {
+                        Thing item = cellThings[i];
+                        if (!item.removeFromLevel && Collision.Line(p1, p2, item))
+                            return item;
+                    }
+                }
+                return null;
+            }
+            if (_queryIds > Int32.MaxValue - 1)
+            {
+                _queryIds = 0;
+            }
+            int queryId = _queryIds++;
+            for (int x = left; x <= right; x++)
+            {
+                for (int y = top; y <= bottom; y++)
+                {
+                    if (Buckets.TryGetValue(new Vec2(x, y), out Dictionary<int, List<Thing>> cell) &&
+                        cell.TryGetValue(typekey, out List<Thing> cellThings))
+                    {
+                        for (int i = 0; i < cellThings.Count; i++)
+                        {
+                            Thing item = cellThings[i];
+                            if (item._queryId != queryId)
+                            {
+                                item._queryId = queryId;
+                                if (!item.removeFromLevel && Collision.Line(p1, p2, item))
+                                    return item;
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
         public IEnumerable<Thing> GetThings(Vec2 p1, Vec2 p2, Type t) //Line
         {
             Vec2[] ids = GetIdForLine(p1, p2);
