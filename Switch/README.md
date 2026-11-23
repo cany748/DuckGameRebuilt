@@ -58,7 +58,8 @@ DGR's own crash log is `/switch/DuckGame/game/ducklog.txt`, saves live in `/swit
 - Threads created with libnx's "default core" would all be pinned to core 0; `source/thread_wrap.c`
   keeps the game loop on core 0 and spreads every other thread over cores 1-2.
 - Audio bypasses SDL: `source/faudio_switch.c` replaces FAudio's device layer (linker `--wrap`) and mixes
-  one audren frame (240 samples, 5 ms) at a time from its own thread on core 2, with 4 frames queued.
+  one audren frame (240 samples, 5 ms) at a time from its own thread on core 2, with 2 frames queued
+  (10 ms: a sound plays within about one 60 FPS frame). `audio=mixed/starved` in PERF lines counts underruns.
   SDL2's Switch driver queued only two buffers, which either underran or added a lot of latency.
 - `DuckGame.Switch/Platform/SwitchDisplay.cs` renders at 1280x720 handheld and 1920x1080 docked and
   follows dock changes (SDL2 always reports a 1920x1080 display mode).

@@ -37,6 +37,28 @@ namespace DuckGame
         private static double _updateStart = -1, _drawStart = -1, _lastUpdateMs;
         private static readonly List<double> UpdateMs = new List<double>(), DrawMs = new List<double>();
         private static int _over, _gen0, _gen1;
+
+        [DllImport("__Internal")]
+        private static extern void switch_audio_stats(int[] output);
+
+        // Audio frames mixed / starved (all queued buffers had run out) since the scene started measuring.
+        private static readonly int[] Audio = new int[4];
+        private static int _audioMixed, _audioStarved;
+
+        private static bool ReadAudio()
+        {
+            if (!_native)
+                return false;
+            try
+            {
+                switch_audio_stats(Audio);
+                return true;
+            }
+            catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
+            {
+                return false;
+            }
+        }
         private static long _allocated;
         private static readonly float[] Gpu = new float[13];
         private static double _glDraws, _glUploads, _glTargets;
@@ -353,6 +375,10 @@ namespace DuckGame
                 DevConsole.showFPS = false;
             _verifyAll = Program.commandLine.Contains("-verifyall");
             _measureFrames = _scan ? 300 : 1800;
+            // tools/maptest.sh: -perfscanframes n measures n frames per map, -perfscanfrom n starts at the
+            // n-th map (to carry on after a map crashed the game).
+            if (_scan && int.TryParse(Argument("-perfscanframes"), out int scanFrames) && scanFrames > 0)
+                _measureFrames = scanFrames;
             for (int i = 0; i < Bots.Length; i++)
             {
                 Bots[i] = new PerfBot();
@@ -398,6 +424,10 @@ namespace DuckGame
                 for (int i = 0; i < count; i++)
                     Scenes.Add(new KeyValuePair<string, Func<Level>>(Scenes[i].Key + GpuSuffix, Scenes[i].Value));
             }
+            if (_scan && int.TryParse(Argument("-perfscanfrom"), out int scanFrom) && scanFrom > 0)
+                _scene = scanFrom - 1;
+            if (_scan)
+                Console.WriteLine("SCAN count " + Scenes.Count);
             NextScene();
         }
 
@@ -463,6 +493,8 @@ namespace DuckGame
                     // measured ones (writes profile-<scene>-load.txt).
                     if (_profileLoad && _native && Directory.Exists("/switch/DuckGame"))
                         _profilingLoad = switch_profiler_start() != 0;
+                    if (_scan)
+                        Console.WriteLine("SCAN " + _scene + " " + SceneName);
                     Level.current = Scenes[_scene].Value();
                     _lastLevel = null;
                     return;
@@ -518,6 +550,11 @@ namespace DuckGame
                     _profilingLoad = false;
                 }
                 _gen0 = GC.CollectionCount(0);
+                if (ReadAudio())
+                {
+                    _audioMixed = Audio[1];
+                    _audioStarved = Audio[2];
+                }
                 _gen1 = GC.CollectionCount(1);
                 _allocated = GC.GetTotalAllocatedBytes(false);
                 if (Program.commandLine.Contains("-perfalloc"))
@@ -565,7 +602,7 @@ namespace DuckGame
             double update = Mean(UpdateMs), draw = Mean(DrawMs);
             int frames = Math.Max(_glFrames, 1);
             Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0} work={20:0.00}/{21:0.00} glms={22} finish={23:0.00} fps={24:0.0}",
+                "PERF {0} frames={1} rounds={19} upd={2:0.00}/{3:0.00}/{4:0.00}/{5:0.00}/{6:0.00} drw={7:0.00}/{8:0.00}/{9:0.00}/{10:0.00}/{11:0.00} sum={12:0.00}/{13:0.00} over16={14} gl={15} gc0={16} gc1={17} alloc={18:0.0} work={20:0.00}/{21:0.00} glms={22} finish={23:0.00} fps={24:0.0} audio={25}",
                 SceneName, UpdateMs.Count,
                 update, Percentile(UpdateMs, 0.5), Percentile(UpdateMs, 0.95), Percentile(UpdateMs, 0.99), Percentile(UpdateMs, 1),
                 draw, Percentile(DrawMs, 0.5), Percentile(DrawMs, 0.95), Percentile(DrawMs, 0.99), Percentile(DrawMs, 1),
@@ -576,7 +613,8 @@ namespace DuckGame
                 Mean(WorkMs), Percentile(WorkMs, 0.95),
                 _native && _glFrames > 0 ? string.Format(CultureInfo.InvariantCulture, "{0:0.00}/{1:0.00}/{2:0.00}/{3:0.00}", _glDrawMs / frames, _glUploadMs / frames, _glSwapMs / frames, _glClearMs / frames) : "n/a",
                 _glFinishMs / frames,
-                _frameIntervals > 0 ? 1000.0 * DrawMs.Count / _frameIntervals : 0));
+                _frameIntervals > 0 ? 1000.0 * DrawMs.Count / _frameIntervals : 0,
+                ReadAudio() ? (Audio[1] - _audioMixed) + "/" + (Audio[2] - _audioStarved) : "n/a"));
         }
 
         private static double Mean(List<double> sorted)

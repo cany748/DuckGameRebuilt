@@ -3,7 +3,7 @@
 //
 // SDL2's Switch audio driver queues only two buffers and waits for each one to start playing,
 // so it either underruns (small buffers) or adds a lot of latency (large ones). Here FAudio mixes
-// one audren frame (5 ms) at a time and keeps a few frames queued. If any audren step fails, the
+// one audren frame (5 ms) at a time and keeps two frames queued. If any audren step fails, the
 // original SDL2 device is used instead.
 //
 // The four FAudio platform entry points are linked with -Wl,--wrap; the rest of FAudio's SDL2
@@ -20,7 +20,9 @@
 #define SAMPLE_RATE 48000
 #define CHANNELS 2
 #define FRAME_SAMPLES 240 /* one audren frame at 48 kHz */
-#define BUFFER_COUNT 4
+/* Two 5 ms frames: one playing, one queued. A sound started by the game reaches the speaker within about
+ * 10-15 ms (one frame at 60 FPS) plus the renderer's own output stage. */
+#define BUFFER_COUNT 2
 #define THREAD_PRIORITY 0x2B /* just above the default 0x2C used by the game threads */
 #define THREAD_CORE 2
 

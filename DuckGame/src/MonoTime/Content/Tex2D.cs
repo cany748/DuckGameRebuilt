@@ -48,7 +48,11 @@ namespace DuckGame
                 _atlasDictionary = atlas;
                 _atlasCount = atlas.Count;
                 _atlasName = name;
-                _atlasFound = name != null && atlas.TryGetValue(name, out _atlasOffset);
+                // The atlas is built from the PNGs; a texture loaded from an XNB of another size (the 14x14 button
+                // icons are 13x14 in the atlas) would read the neighbouring sprite past the edge, so it is drawn
+                // from its own texture.
+                _atlasFound = name != null && atlas.TryGetValue(name, out _atlasOffset)
+                    && _atlasOffset.Width >= width && _atlasOffset.Height >= height;
             }
             offset = _atlasOffset;
             return _atlasFound;
